@@ -3,9 +3,12 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
 
-# Configura a página e remove o espaço em branco do topo
-st.set_page_config(layout="wide")
+# ==========================================
+# 1. CONFIGURAÇÃO DA PÁGINA (DEVE SER A PRIMEIRA LINHA)
+# ==========================================
+st.set_page_config(layout="wide", page_title="Dashboard Risco Logística", page_icon="🚛")
 
+# CSS para Segurança e Layout
 st.markdown(
     """
     <style>
@@ -14,20 +17,30 @@ st.markdown(
     header {visibility: hidden;}
     .stAppDeployButton {display:none;}
     
-    /* Remove o espaço em branco no topo do dashboard */
+    /* Ajuste de Espaçamento no Topo */
     .block-container {
         padding-top: 1rem;
         padding-bottom: 1rem;
         margin-top: -30px;
     }
+    
+    /* Estilização dos Cards e Header */
+    .stMetric { background-color: #111827; border-radius: 10px; padding: 15px; border: 1px solid #374151; }
+    .header-bar { 
+        background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%); 
+        padding: 15px; 
+        border-radius: 8px; 
+        color: white; 
+        margin-bottom: 25px; 
+        text-align: center; 
+        font-weight: bold; 
+        font-size: 22px; 
+    }
     </style>
+    <div class="header-bar">INDICADOR DE RISCO LOGÍSTICA - DATA UNIT</div>
     """,
     unsafe_allow_html=True
 )
-# ==========================================
-# 1. CONFIGURAÇÃO DA PÁGINA
-# ==========================================
-st.set_page_config(layout="wide", page_title="Dashboard Risco Logística", page_icon="🚛")
 
 # ==========================================
 # 2. FUNÇÃO DE CARREGAMENTO DE DADOS
@@ -78,7 +91,7 @@ with st.sidebar:
         st.stop()
 
 # ==========================================
-# 4. CONTEÚDO VISUAL (FRAGMENTO)
+# 4. CONTEÚDO VISUAL (RENDERIZAÇÃO)
 # ==========================================
 @st.fragment(run_every=600)
 def render_dashboard(df_all, date_val, cds_val):
@@ -92,52 +105,56 @@ def render_dashboard(df_all, date_val, cds_val):
     df_at = df_all[(df_all['DATA'] == date_val) & (df_all[col_cd].isin(cds_val))].copy()
     df_ps = df_all[(df_all['DATA'] == date_ant) & (df_all[col_cd].isin(cds_val))].copy()
 
-    st.markdown("""
-        <style>
-        .stMetric { background-color: #111827; border-radius: 10px; padding: 15px; border: 1px solid #374151; }
-        .header-bar { background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%); padding: 15px; border-radius: 8px; color: white; margin-bottom: 25px; text-align: center; font-weight: bold; font-size: 22px; }
-        .gauge-card { background-color: #111827; border: 1px solid #374151; border-radius: 10px; padding: 10px; height: 100%; }
-        </style>
-        <div class="header-bar">INDICADOR DE RISCO LOGÍSTICA - DATA UNIT</div>
-    """, unsafe_allow_html=True)
-
-    # --- KPIs ---
-    c1, c2, c3, c4 = st.columns([1, 1, 1, 1.2])
-
+    # --- KPIs EM COLUNAS OTIMIZADAS ---
+    # c1: Gauge Largo | c2: DIF | c3: Malha Estreita | c4: DVG Atual
+    c1, c2, c3, c4 = st.columns([1.8, 1.2, 0.7, 1.2])
 
     with c1:
-    # Usamos uma altura fixa no gráfico (height=110) e limpamos margens
-     fig_gauge = go.Figure(go.Indicator(
-        mode = "gauge+number", value = df_at[col_risco].mean(),
-        number = {'font': {'color': 'white', 'size': 26}, 'valueformat': '.2f'},
-        title = {'text': "Risco Médio", 'font': {'color': '#94A3B8', 'size': 12}},
-        gauge = {'axis': {'range': [0, 3]}, 'bar': {'color': "#3B82F6"},
-                 'steps': [
-                     {'range': [0, 1], 'color': "green"}, 
-                     {'range': [1, 2], 'color': "yellow"}, 
-                     {'range': [2, 3], 'color': "red"}
-                 ]}
-    ))
-    # Crucial: t=10 (top) e b=0 (bottom) para alinhar com o topo dos outros cards
-    fig_gauge.update_layout(height=110, margin=dict(l=10, r=10, t=10, b=0), paper_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
-    
+        risco_med_val = df_at[col_risco].mean()
+        fig_gauge = go.Figure(go.Indicator(
+            mode = "gauge+number", 
+            value = risco_med_val,
+            number = {'font': {'color': 'white', 'size': 26}, 'valueformat': '.2f'},
+            title = {'text': "Risco Médio", 'font': {'color': '#94A3B8', 'size': 12}},
+            gauge = {
+                'axis': {'range': [0, 3]}, 
+                'bar': {'color': "#3B82F6"},
+                'steps': [
+                    {'range': [0, 1], 'color': "green"}, 
+                    {'range': [1, 2], 'color': "yellow"}, 
+                    {'range': [2, 3], 'color': "red"}
+                ]
+            }
+        ))
+        fig_gauge.update_layout(
+            height=110, 
+            margin=dict(l=10, r=10, t=-10, b=0), 
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
+
     with c2:
         dvg_hoje = df_at[col_dvg].sum()
         dvg_ontem = df_ps[col_dvg].sum()
         dif_valor = dvg_hoje - dvg_ontem
-        st.metric("DIF vs Anterior", f"{dif_valor/1000:+.1f}k", delta=f"{dif_valor/1000:,.1f}k", delta_color="inverse")
+        st.metric(
+            label="DIF vs Anterior", 
+            value=f"{dif_valor/1000:+.1f}k", 
+            delta=f"{dif_valor/1000:,.1f}k", 
+            delta_color="inverse"
+        )
 
     with c3:
-        # MALHA COMO INTEIRO NO KPI
-        st.metric("Qtd Malha", f"{int(df_at[col_malha].sum()):,}")
+        qtd_malha = int(df_at[col_malha].sum())
+        st.metric(label="Qtd Malha", value=f"{qtd_malha:,}")
 
     with c4:
-        st.metric("DVG Atual", f"R$ {df_at[col_dvg].sum()/1000:,.1f}k")
+        dvg_total = df_at[col_dvg].sum()
+        st.metric(label="DVG Atual", value=f"R$ {dvg_total/1000:,.1f}k")
 
     st.divider()
 
-    # --- PARETO ---
+    # --- GRÁFICO PARETO ---
     st.subheader("Concentração de DVG por Unidade")
     df_p = df_at[df_at[col_dvg] > 0].sort_values(col_dvg, ascending=False).reset_index(drop=True)
     if not df_p.empty:
@@ -153,7 +170,6 @@ def render_dashboard(df_all, date_val, cds_val):
     df_table = df_at[[col_cd, 'CIDADE', col_rectec, col_malha, col_dvg, col_risco]].copy()
 
     def style_performance(styler):
-        # FORMATAÇÃO AJUSTADA: REC. TEC. e MALHA como INTEIROS ({:,.0f})
         styler.format({
             col_dvg: 'R$ {:,.1f}k', 
             col_risco: '{:.2f}', 
