@@ -104,8 +104,25 @@ def render_dashboard(df_all, date_val, cds_val):
     # --- KPIs ---
     c1, c2, c3, c4 = st.columns([1, 1, 1, 1.2])
 
+
     with c1:
-        st.metric("DVG Atual", f"R$ {df_at[col_dvg].sum()/1000:,.1f}k")
+     st.markdown('<div class="gauge-card">', unsafe_allow_html=True)
+    risco_med = df_at[col_risco].mean()
+    fig_gauge = go.Figure(go.Indicator(
+        mode = "gauge+number", value = risco_med,
+        number = {'font': {'color': 'white', 'size': 30}, 'valueformat': '.2f'},
+        title = {'text': "Risco Médio", 'font': {'color': '#94A3B8', 'size': 12}},
+        gauge = {'axis': {'range': [0, 3]}, 'bar': {'color': "#3B82F6"},
+                 'steps': [
+                     {'range': [0, 1], 'color': "green"}, 
+                     {'range': [1, 2], 'color': "yellow"}, 
+                     {'range': [2, 3], 'color': "red"}
+                 ]}
+    ))
+    fig_gauge.update_layout(height=130, margin=dict(l=15, r=15, t=30, b=5), paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_gauge, use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
     
     with c2:
         dvg_hoje = df_at[col_dvg].sum()
@@ -118,18 +135,7 @@ def render_dashboard(df_all, date_val, cds_val):
         st.metric("Qtd Malha", f"{int(df_at[col_malha].sum()):,}")
 
     with c4:
-        st.markdown('<div class="gauge-card">', unsafe_allow_html=True)
-        risco_med = df_at[col_risco].mean()
-        fig_gauge = go.Figure(go.Indicator(
-            mode = "gauge+number", value = risco_med,
-            number = {'font': {'color': 'white', 'size': 30}, 'valueformat': '.2f'},
-            title = {'text': "Risco Médio", 'font': {'color': '#94A3B8', 'size': 12}},
-            gauge = {'axis': {'range': [0, 3]}, 'bar': {'color': "#3B82F6"},
-                     'steps': [{'range': [0, 1], 'color': "green"}, {'range': [1, 2], 'color': "yellow"}, {'range': [2, 3], 'color': "red"}]}
-        ))
-        fig_gauge.update_layout(height=130, margin=dict(l=15, r=15, t=30, b=5), paper_bgcolor='rgba(0,0,0,0)')
-        st.plotly_chart(fig_gauge, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.metric("DVG Atual", f"R$ {df_at[col_dvg].sum()/1000:,.1f}k")
 
     st.divider()
 
