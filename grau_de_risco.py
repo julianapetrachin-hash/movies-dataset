@@ -17,37 +17,41 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* 1. Limpeza do Header e Menu */
+    /* 1. Limpeza padrão do Header e Menu */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
+    header {background: rgba(0,0,0,0) !important; color: transparent !important;} /* Deixa o header transparente mas existente */
     .stAppDeployButton {display:none;} 
 
-    /* 2. BOTÃO DE FILTROS SEMPRE VISÍVEL (AZUL) */
+    /* 2. FORÇA O BOTÃO DE ABRIR FILTROS A FICAR NA FRENTE DE TUDO (Z-INDEX SUPER ALTO) */
+    /* Este código "pega" a setinha e prega ela no canto com z-index imenso */
     button[data-testid="stSidebarCollapseButton"] {
         visibility: visible !important;
         position: fixed !important;
-        top: 15px !important;
-        left: 10px !important;
-        z-index: 99999 !important;
-        background-color: #1e3a8a !important;
-        color: white !important;
-        border-radius: 50% !important;
-        width: 40px !important;
-        height: 40px !important;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.5) !important;
+        top: 20px !important; /* Desci um pouco para não colar no topo */
+        left: 20px !important; /* Desci um pouco para não colar no canto */
+        z-index: 1000000 !important; /* Maior que qualquer outra coisa na página */
+        background-color: #1e3a8a !important; /* Azul escuro para contraste */
+        color: white !important; /* Setinha branca */
+        border-radius: 50% !important; /* Redondinho */
+        width: 45px !important;
+        height: 45px !important;
+        box-shadow: 0px 4px 15px rgba(0,0,0,0.5) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
-    /* 3. AJUSTE DO CONTEÚDO (PARA O TÍTULO APARECER) */
+    /* 3. Ajuste do Conteúdo (para o título não cobrir o botão) */
     .block-container {
-        padding-top: 3rem !important; /* Aumentei o espaço no topo */
+        padding-top: 2.5rem !important; /* Espaço para o título e botão respirarem */
         margin-top: -20px;
     }
 
-    /* 4. TÍTULO BLINDADO (Z-INDEX ALTO) */
+    /* 4. TÍTULO BLINDADO (Z-INDEX ALTO MAS MENOR QUE O BOTÃO) */
     .dashboard-title {
         background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%);
-        padding: 15px;
+        padding: 12px;
         border-radius: 10px;
         color: white;
         text-align: center;
@@ -55,11 +59,11 @@ st.markdown(
         font-size: 24px;
         margin-bottom: 30px;
         position: relative;
-        z-index: 1000; /* Garante que fique na frente de tudo */
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        z-index: 1000; /* Menor que o botão da sidebar */
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
 
-    /* 5. CARDS DOS KPIs */
+    /* 5. CARDS DOS KPIs (Estilo Elite) */
     [data-testid="stMetric"] {
         background-color: #111827 !important;
         border-radius: 15px !important;
