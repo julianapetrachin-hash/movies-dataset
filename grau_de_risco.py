@@ -16,8 +16,8 @@ st.markdown(
     
     /* Remove o espaço em branco no topo do dashboard */
     .block-container {
-        padding-top: 0rem;
-        padding-bottom: 0rem;
+        padding-top: 1rem;
+        padding-bottom: 1rem;
         margin-top: -30px;
     }
     </style>
