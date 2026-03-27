@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from datetime import datetime
 
 # ==========================================
-# 1. CONFIGURAÇÃO DA PÁGINA
+# 1. CONFIGURAÇÃO DA PÁGINA (ESTADO INICIAL)
 # ==========================================
 st.set_page_config(
     layout="wide", 
@@ -13,42 +13,44 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CSS PROFISSIONAL, RECUPERAÇÃO DO BOTÃO E ESTILO DE CARDS ---
+# --- CSS DE SEGURANÇA MÁXIMA E INTERFACE ELITE ---
 st.markdown(
     """
     <style>
-    /* 1. Limpeza padrão do Header e Menu */
+    /* 1. LIMPEZA TOTAL DE CABEÇALHO E FERRAMENTAS DO STREAMLIT */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {background: rgba(0,0,0,0) !important; color: transparent !important;} /* Deixa o header transparente mas existente */
-    .stAppDeployButton {display:none;} 
+    header {visibility: hidden !important;}
+    .stAppDeployButton {display:none !important;} 
+    
+    /* REMOVE ÍCONE DO GITHUB E LINKS DE CÓDIGO FONTE */
+    [data-testid="stStatusWidget"] {display:none !important;}
+    .stAppToolbar {display:none !important;}
+    a[href*="github.com"] {display:none !important;}
+    button[title*="View source"] {display:none !important;}
 
-    /* 2. FORÇA O BOTÃO DE ABRIR FILTROS A FICAR NA FRENTE DE TUDO (Z-INDEX SUPER ALTO) */
-    /* Este código "pega" a setinha e prega ela no canto com z-index imenso */
+    /* 2. BOTÃO DE FILTROS SEMPRE VISÍVEL (FLUTUANTE NO CANTO) */
     button[data-testid="stSidebarCollapseButton"] {
         visibility: visible !important;
         position: fixed !important;
-        top: 20px !important; /* Desci um pouco para não colar no topo */
-        left: 20px !important; /* Desci um pouco para não colar no canto */
-        z-index: 1000000 !important; /* Maior que qualquer outra coisa na página */
-        background-color: #1e3a8a !important; /* Azul escuro para contraste */
-        color: white !important; /* Setinha branca */
-        border-radius: 50% !important; /* Redondinho */
-        width: 45px !important;
-        height: 45px !important;
-        box-shadow: 0px 4px 15px rgba(0,0,0,0.5) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
+        top: 15px !important;
+        left: 15px !important;
+        z-index: 1000001 !important;
+        background-color: #1e3a8a !important;
+        color: white !important;
+        border-radius: 50% !important;
+        width: 40px !important;
+        height: 40px !important;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.5) !important;
     }
 
-    /* 3. Ajuste do Conteúdo (para o título não cobrir o botão) */
+    /* 3. AJUSTE DO CONTEÚDO PARA NÃO SOBREPOR O TÍTULO */
     .block-container {
-        padding-top: 2.5rem !important; /* Espaço para o título e botão respirarem */
-        margin-top: -20px;
+        padding-top: 3.5rem !important;
+        margin-top: -30px;
     }
 
-    /* 4. TÍTULO BLINDADO (Z-INDEX ALTO MAS MENOR QUE O BOTÃO) */
+    /* 4. TÍTULO BLINDADO (NA FRENTE DE TUDO) */
     .dashboard-title {
         background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%);
         padding: 12px;
@@ -59,11 +61,11 @@ st.markdown(
         font-size: 24px;
         margin-bottom: 30px;
         position: relative;
-        z-index: 1000; /* Menor que o botão da sidebar */
+        z-index: 1000;
         box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
 
-    /* 5. CARDS DOS KPIs (Estilo Elite) */
+    /* 5. CARDS KPIs PROFISSIONAIS */
     [data-testid="stMetric"] {
         background-color: #111827 !important;
         border-radius: 15px !important;
@@ -75,6 +77,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 # ==========================================
 # 2. CARREGAMENTO DE DADOS
 # ==========================================
@@ -168,6 +171,8 @@ def render_dashboard(df_all, date_val, cds_val):
     with c4:
         st.metric(label="DVG Atual", value=f"R$ {df_at[col_dvg].sum()/1000:,.1f}k")
 
+    st.markdown("---")
+
     # --- GRÁFICO PARETO ---
     st.subheader("Concentração de DVG por Unidade")
     df_p = df_at[df_at[col_dvg] > 0].sort_values(col_dvg, ascending=False).reset_index(drop=True)
@@ -179,7 +184,7 @@ def render_dashboard(df_all, date_val, cds_val):
         fig_p.update_layout(height=380, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis2=dict(overlaying="y", side="right", range=[0, 110]))
         st.plotly_chart(fig_p, use_container_width=True)
 
-    # --- TABELA DETALHADA COM FAROL DE RISCO ---
+    # --- TABELA DETALHADA ---
     st.subheader("📋 Detalhamento Operacional")
     df_table = df_at[[col_cd, 'CIDADE', col_rectec, col_malha, col_dvg, col_risco]].copy()
 
