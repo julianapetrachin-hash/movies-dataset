@@ -17,53 +17,44 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    /* 1. Esconde o lixo visual padrão */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     .stAppDeployButton {display:none;} 
 
-    /* BOTÃO DA SIDEBAR SEMPRE VISÍVEL */
+    /* 2. FORÇA O BOTÃO DE ABRIR SIDEBAR A APARECER (MESMO SEM HEADER) */
     button[data-testid="stSidebarCollapseButton"] {
         visibility: visible !important;
         position: fixed !important;
         top: 15px !important;
         left: 10px !important;
-        z-index: 99999;
-        background-color: #1e3a8a !important;
+        z-index: 99999 !important;
+        background-color: #1e3a8a !important; /* Azul para você enxergar */
         color: white !important;
         border-radius: 50% !important;
+        width: 40px !important;
+        height: 40px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.3) !important;
     }
 
+    /* 3. Ajuste de Espaçamento no Topo */
     .block-container {
         padding-top: 2rem;
         margin-top: -30px;
     }
 
-    .dashboard-title {
-        background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%);
-        padding: 12px;
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-        font-weight: bold;
-        font-size: 24px;
-        margin-bottom: 25px;
-    }
-
-    /* CARDS ESTILO ELITE */
+    /* 4. Estilo Profissional dos Cards */
     [data-testid="stMetric"] {
-        background: rgba(17, 24, 39, 0.8) !important;
-        border: 1px solid rgba(55, 65, 81, 1) !important;
+        background-color: #111827 !important;
         border-radius: 15px !important;
         padding: 20px !important;
-        transition: transform 0.3s ease;
-    }
-    [data-testid="stMetric"]:hover {
-        transform: translateY(-5px);
-        border-color: #3B82F6 !important;
+        border: 1px solid #374151 !important;
     }
     </style>
-    <div class="dashboard-title">INDICADOR DE RISCO LOGÍSTICA - DATA UNIT</div>
     """,
     unsafe_allow_html=True
 )
