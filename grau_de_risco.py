@@ -25,7 +25,7 @@ st.markdown(
 
     /* 3. Ajuste de Espaçamento no Topo para o título não sumir */
     .block-container {
-        padding-top: 0rem;
+        padding-top: 2rem;
         margin-top: -30px;
     }
 
