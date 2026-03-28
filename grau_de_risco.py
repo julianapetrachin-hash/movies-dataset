@@ -35,16 +35,25 @@ def check_password():
 if check_password():
 
     # --- CSS DE SEGURANÇA E ESTRUTURA ---
+    # --- CSS DE LIMPEZA CIRÚRGICA (NÃO QUEBRA OS FILTROS) ---
     st.markdown(
         """
         <style>
-        [data-testid="stHeader"] {display: none !important;}
-        .stAppToolbar {display: none !important;}
-        [data-testid="stStatusWidget"] {display: none !important;}
-        .stAppDeployButton {display: none !important;}
+        /* 1. MATA APENAS O GITHUB E O BOTÃO DE DEPLOY */
+        [data-testid="stStatusWidget"] {display:none !important;}
+        .stAppDeployButton {display:none !important;}
+        
+        /* 2. ESCONDE O MENU DE TRÊS PONTINHOS E O RODAPÉ */
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
 
+        /* 3. DEIXA O HEADER TRANSPARENTE (PARA A SETA FUNCIONAR) */
+        header {
+            background-color: rgba(0,0,0,0) !important;
+            border: none !important;
+        }
+
+        /* 4. AJUSTE DE LARGURA TOTAL */
         .block-container {
             max-width: 98% !important;
             padding-top: 1rem !important;
@@ -52,6 +61,7 @@ if check_password():
             padding-right: 2rem !important;
         }
 
+        /* 5. TÍTULO ESTILIZADO */
         .dashboard-title {
             background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%);
             padding: 12px;
@@ -60,19 +70,11 @@ if check_password():
             text-align: center;
             font-weight: bold;
             font-size: 22px;
-            margin-bottom: 10px;
+            margin-bottom: 25px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
 
-        div.stButton > button {
-            background-color: #1e3a8a !important;
-            color: white !important;
-            border-radius: 5px !important;
-            border: 1px solid #3b82f6 !important;
-            height: 3em !important;
-            width: 100% !important;
-        }
-
+        /* 6. CARDS KPIs */
         [data-testid="stMetric"] {
             background-color: #111827 !important;
             border: 1px solid #374151 !important;
