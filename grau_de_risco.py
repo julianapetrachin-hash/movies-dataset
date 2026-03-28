@@ -30,10 +30,11 @@ def check_password():
 # INÍCIO DO CONTEÚDO PROTEGIDO
 if check_password():
 
-    # --- CSS DE SEGURANÇA E TÍTULO ---
+   # --- CSS DE SEGURANÇA E BOTÃO FLUTUANTE ---
     st.markdown(
         """
         <style>
+        /* 1. BLINDAGEM CONTRA GITHUB E HEADER */
         [data-testid="stHeader"] {display: none !important;}
         .stAppToolbar {display: none !important;}
         [data-testid="stStatusWidget"] {display: none !important;}
@@ -41,11 +42,28 @@ if check_password():
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
 
+        /* 2. BOTÃO DE FILTROS SEMPRE VISÍVEL (FLUTUANTE) */
+        /* Este código resgata a setinha do Streamlit e coloca ela num círculo azul */
+        button[data-testid="stSidebarCollapseButton"] {
+            visibility: visible !important;
+            display: block !important;
+            position: fixed !important;
+            top: 15px !important;
+            left: 15px !important;
+            z-index: 9999999 !important;
+            background-color: #1e3a8a !important; /* Azul da Data Unit */
+            color: white !important;
+            border-radius: 50% !important;
+            width: 45px !important;
+            height: 45px !important;
+            box-shadow: 0px 4px 15px rgba(0,0,0,0.5) !important;
+        }
+
+        /* 3. AJUSTE DE LARGURA E TÍTULO */
         .block-container {
             max-width: 98% !important;
             padding-top: 1rem !important;
-            padding-left: 2rem !important;
-            padding-right: 2rem !important;
+            padding-left: 4.5rem !important; /* Abre espaço para o botão não cobrir o Gauge */
         }
 
         .dashboard-title {
@@ -57,7 +75,6 @@ if check_password():
             font-weight: bold;
             font-size: 22px;
             margin-bottom: 25px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
 
         [data-testid="stMetric"] {
