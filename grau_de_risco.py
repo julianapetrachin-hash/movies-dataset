@@ -9,58 +9,38 @@ from datetime import datetime
 st.markdown(
     """
     <style>
-    /* 1. LIMPEZA TOTAL (GITHUB, FORK, HEADER) */
+    /* 1. Remove apenas o que incomoda (GitHub e Menu) */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden !important;}
     .stAppDeployButton {display:none !important;} 
     [data-testid="stStatusWidget"] {display:none !important;}
-    .stAppToolbar {display:none !important;}
-    a[href*="github.com"] {display:none !important;}
-
-    /* 2. CRIAÇÃO DO BOTÃO FLUTUANTE DE FILTROS */
-    /* Este botão "engana" o Streamlit e fica sempre visível no canto */
-    [data-testid="stSidebarCollapseButton"] {
-        visibility: visible !important;
-        position: fixed !important;
-        top: 15px !important;
-        left: 15px !important;
-        z-index: 99999999 !important;
-        background-color: #1e3a8a !important;
-        color: white !important;
-        border-radius: 50% !important;
-        width: 45px !important;
-        height: 45px !important;
-        box-shadow: 0px 0px 15px rgba(30, 58, 138, 0.8) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
     
-    /* Garante que o ícone da setinha dentro do botão fique branco */
-    [data-testid="stSidebarCollapseButton"] svg {
-        fill: white !important;
-        width: 25px !important;
-        height: 25px !important;
-    }
-
-    /* 3. AJUSTE DO DASHBOARD (WIDE MODE) */
+    /* 2. Garante que a página use 100% da largura (Corrige o bug da imagem) */
     .main .block-container {
-        max-width: 98% !important;
-        padding-top: 1.5rem !important;
-        padding-left: 4.5rem !important; /* Espaço para o botão azul não cobrir o Gauge */
+        max-width: 95% !important;
+        padding-top: 1rem !important;
+        margin: 0 auto !important;
     }
 
-    /* 4. TÍTULO ESTILIZADO */
+    /* 3. Estiliza o Título de forma simples para não quebrar o layout */
     .dashboard-title {
-        background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%);
+        background: #1e3a8a;
         padding: 10px;
-        border-radius: 8px;
+        border-radius: 5px;
         color: white;
         text-align: center;
         font-weight: bold;
-        font-size: 22px;
+        font-size: 20px;
         margin-bottom: 20px;
+        width: 100%;
+    }
+
+    /* 4. Cards dos KPIs (Ajuste de tamanho para não espremer) */
+    [data-testid="stMetric"] {
+        background-color: #111827;
+        border-radius: 10px;
+        padding: 10px;
+        border: 1px solid #374151;
     }
     </style>
     <div class="dashboard-title">INDICADOR DE RISCO LOGÍSTICA - DATA UNIT</div>
