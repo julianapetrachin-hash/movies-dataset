@@ -9,37 +9,44 @@ from datetime import datetime
 st.markdown(
     """
     <style>
-    /* 1. Remove apenas o que incomoda (GitHub e Menu) */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    .stAppDeployButton {display:none !important;} 
-    [data-testid="stStatusWidget"] {display:none !important;}
-    
-    /* 2. Garante que a página use 100% da largura (Corrige o bug da imagem) */
+    /* 1. FORÇA O LAYOUT WIDE (OCUPA A TELA TODA) */
     .main .block-container {
-        max-width: 95% !important;
+        max-width: 98% !important;
         padding-top: 1rem !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
         margin: 0 auto !important;
     }
 
-    /* 3. Estiliza o Título de forma simples para não quebrar o layout */
+    /* 2. ESCONDE O GITHUB E BARRA DE FERRAMENTAS TOTALMENTE */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden !important;}
+    .stAppDeployButton {display:none !important;} 
+    
+    /* Remove especificamente o ícone do GitHub e status do Streamlit */
+    [data-testid="stStatusWidget"], .stAppToolbar, [data-testid="stHeader"] {
+        display: none !important;
+    }
+
+    /* 3. TÍTULO ESTILIZADO E CENTRALIZADO */
     .dashboard-title {
-        background: #1e3a8a;
-        padding: 10px;
-        border-radius: 5px;
+        background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%);
+        padding: 12px;
+        border-radius: 8px;
         color: white;
         text-align: center;
         font-weight: bold;
-        font-size: 20px;
-        margin-bottom: 20px;
+        font-size: 22px;
+        margin-bottom: 25px;
         width: 100%;
     }
 
-    /* 4. Cards dos KPIs (Ajuste de tamanho para não espremer) */
+    /* 4. CARDS DOS KPIs (Ajuste para não ficarem espremidos) */
     [data-testid="stMetric"] {
         background-color: #111827;
         border-radius: 10px;
-        padding: 10px;
+        padding: 15px;
         border: 1px solid #374151;
     }
     </style>
