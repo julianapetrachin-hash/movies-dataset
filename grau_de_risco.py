@@ -13,44 +13,44 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CSS DE SEGURANÇA MÁXIMA E INTERFACE ELITE ---
 st.markdown(
     """
     <style>
-    /* 1. LIMPEZA TOTAL DE CABEÇALHO E FERRAMENTAS DO STREAMLIT */
+    /* 1. LIMPEZA TOTAL (GITHUB, FORK, HEADER) */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden !important;}
     .stAppDeployButton {display:none !important;} 
-    
-    /* REMOVE ÍCONE DO GITHUB E LINKS DE CÓDIGO FONTE */
     [data-testid="stStatusWidget"] {display:none !important;}
     .stAppToolbar {display:none !important;}
     a[href*="github.com"] {display:none !important;}
-    button[title*="View source"] {display:none !important;}
-
-    /* 2. BOTÃO DE FILTROS SEMPRE VISÍVEL (FLUTUANTE NO CANTO) */
+    
+    /* 2. BOTÃO DE FILTROS FLUTUANTE (RECUPERAÇÃO) */
+    /* Este bloco força o botão de abrir a sidebar a ficar visível e clicável */
     button[data-testid="stSidebarCollapseButton"] {
         visibility: visible !important;
         position: fixed !important;
-        top: 15px !important;
-        left: 15px !important;
-        z-index: 1000001 !important;
-        background-color: #1e3a8a !important;
+        top: 12px !important;
+        left: 12px !important;
+        z-index: 999999 !important;
+        background-color: #1e3a8a !important; /* Azul para combinar com o título */
         color: white !important;
         border-radius: 50% !important;
         width: 40px !important;
         height: 40px !important;
         box-shadow: 0px 4px 10px rgba(0,0,0,0.5) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
-    /* 3. AJUSTE DO CONTEÚDO PARA NÃO SOBREPOR O TÍTULO */
+    /* 3. AJUSTE DE ESPAÇAMENTO DO CONTEÚDO */
     .block-container {
         padding-top: 3.5rem !important;
-        margin-top: -30px;
+        margin-top: -25px;
     }
 
-    /* 4. TÍTULO BLINDADO (NA FRENTE DE TUDO) */
+    /* 4. TÍTULO BLINDADO */
     .dashboard-title {
         background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%);
         padding: 12px;
@@ -65,7 +65,7 @@ st.markdown(
         box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
 
-    /* 5. CARDS KPIs PROFISSIONAIS */
+    /* 5. CARDS KPIs */
     [data-testid="stMetric"] {
         background-color: #111827 !important;
         border-radius: 15px !important;
