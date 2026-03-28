@@ -9,52 +9,50 @@ from datetime import datetime
 st.markdown(
     """
     <style>
-    /* 1. FORÇA O LAYOUT WIDE (OCUPA A TELA TODA) */
-    .main .block-container {
+    /* 1. FORÇA A LARGURA TOTAL DO DASHBOARD (MATA O MODO CENTRALIZADO) */
+    .appview-container .main .block-container {
         max-width: 98% !important;
         padding-top: 1rem !important;
-        padding-left: 2rem !important;
-        padding-right: 2rem !important;
-        margin: 0 auto !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
     }
 
-    /* 2. ESCONDE O GITHUB E BARRA DE FERRAMENTAS TOTALMENTE */
+    /* 2. ESCONDE O HEADER E O ÍCONE DO GITHUB (VISUALIZAÇÃO DE CÓDIGO) */
+    [data-testid="stHeader"] {display: none !important;}
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden !important;}
-    .stAppDeployButton {display:none !important;} 
+    .stAppDeployButton {display:none !important;}
     
-    /* Remove especificamente o ícone do GitHub e status do Streamlit */
-    [data-testid="stStatusWidget"], .stAppToolbar, [data-testid="stHeader"] {
-        display: none !important;
-    }
+    /* Remove especificamente o ícone do GitHub no canto superior direito */
+    [data-testid="stStatusWidget"] {display: none !important;}
+    .stAppToolbar {display: none !important;}
 
-    /* 3. TÍTULO ESTILIZADO E CENTRALIZADO */
+    /* 3. TÍTULO ESTILIZADO */
     .dashboard-title {
         background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%);
-        padding: 12px;
+        padding: 15px;
         border-radius: 8px;
         color: white;
         text-align: center;
         font-weight: bold;
-        font-size: 22px;
+        font-size: 24px;
         margin-bottom: 25px;
         width: 100%;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
 
-    /* 4. CARDS DOS KPIs (Ajuste para não ficarem espremidos) */
+    /* 4. AJUSTE DOS CARDS (PARA NÃO FICAREM ESPREMIDOS) */
     [data-testid="stMetric"] {
-        background-color: #111827;
-        border-radius: 10px;
-        padding: 15px;
-        border: 1px solid #374151;
+        background-color: #111827 !important;
+        border: 1px solid #374151 !important;
+        padding: 15px !important;
+        border-radius: 10px !important;
     }
     </style>
     <div class="dashboard-title">INDICADOR DE RISCO LOGÍSTICA - DATA UNIT</div>
     """,
     unsafe_allow_html=True
 )
-
 # ==========================================
 # 2. CARREGAMENTO DE DADOS
 # ==========================================
