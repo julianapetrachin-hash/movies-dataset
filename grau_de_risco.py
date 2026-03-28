@@ -9,7 +9,7 @@ st.set_page_config(layout="wide", initial_sidebar_state="expanded")
 st.markdown(
     """
     <style>
-    /* 1. FORÇA LARGURA TOTAL E REMOVE ESPAÇOS BRANCOS */
+    /* 1. FORÇA LARGURA TOTAL SEM ERRO */
     .block-container {
         max-width: 98% !important;
         padding-top: 1rem !important;
@@ -17,32 +17,25 @@ st.markdown(
         padding-right: 2rem !important;
     }
 
-    /* 2. DESATIVA O CABEÇALHO E O ÍCONE DO GITHUB DE VEZ */
-    /* Esconde o cabeçalho inteiro onde fica o botão do GitHub */
-    [data-testid="stHeader"] {
-        display: none !important;
-    }
-    
-    /* Esconde o menu de hambúrguer e rodapé */
+    /* 2. LIMPEZA SUTIL (Não mata a setinha dos filtros) */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    
-    /* Remove botões de deploy e ferramentas de desenvolvedor */
     .stAppDeployButton {display:none !important;}
-    [data-testid="stStatusWidget"] {display:none !important;}
-    .stAppToolbar {display:none !important;}
+    
+    /* Esconde o ícone do GitHub e a barra de status sem matar o header */
+    [data-testid="stStatusWidget"] {display: none !important;}
+    header {background-color: rgba(0,0,0,0) !important; color: rgba(0,0,0,0) !important;}
 
     /* 3. TÍTULO ESTILIZADO */
     .dashboard-title {
         background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%);
-        padding: 12px;
+        padding: 15px;
         border-radius: 8px;
         color: white;
         text-align: center;
         font-weight: bold;
         font-size: 22px;
         margin-bottom: 25px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
 
     /* 4. CARDS KPIs */
