@@ -17,26 +17,25 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* 1. MATA O GITHUB E O BOTÃO DE DEPLOY (SEM MATAR O HEADER) */
+    /* 1. MATA APENAS O ÍCONE DO GITHUB E BOTÃO DE DEPLOY */
     .stAppDeployButton {display:none !important;}
     [data-testid="stStatusWidget"] {display:none !important;}
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     
-    /* 2. LIMPA O FUNDO DO HEADER PARA FICAR INVISÍVEL */
+    /* 2. DEIXA O HEADER TRANSPARENTE (Assim a setinha dos filtros vive!) */
     header {
         background-color: rgba(0,0,0,0) !important;
+        border: none !important;
     }
 
-    /* 3. FORÇA A LARGURA TOTAL DO CONTEÚDO */
+    /* 3. FORÇA A LARGURA TOTAL */
     .block-container {
         max-width: 98% !important;
-        padding-top: 1rem !important;
-        padding-left: 2rem !important;
-        padding-right: 2rem !important;
+        padding-top: 2rem !important;
     }
 
-    /* 4. TÍTULO ESTILIZADO */
+    /* 4. TÍTULO DO DASHBOARD */
     .dashboard-title {
         background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%);
         padding: 12px;
@@ -47,13 +46,6 @@ st.markdown(
         font-size: 22px;
         margin-bottom: 25px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    }
-
-    /* 5. ESTILO DOS CARDS KPIs */
-    [data-testid="stMetric"] {
-        background-color: #111827 !important;
-        border: 1px solid #374151 !important;
-        border-radius: 10px !important;
     }
     </style>
     <div class="dashboard-title">INDICADOR DE RISCO LOGÍSTICA - DATA UNIT</div>
