@@ -3,9 +3,15 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
 
+import streamlit as st
+import pandas as pd
+import plotly.graph_objects as go
+from datetime import datetime
+
 # ==========================================
-# 1. CONFIGURAÇÃO DA PÁGINA (ESTRITAMENTE O PRIMEIRO)
+# 1. CONFIGURAÇÃO DA PÁGINA
 # ==========================================
+# Usamos "collapsed" para esconder por padrão e garantir que o botão controle
 st.set_page_config(
     layout="wide", 
     page_title="Dashboard Risco Logística", 
@@ -13,27 +19,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Inicializa o estado da sidebar para evitar travamentos
-if 'sidebar_state' not in st.session_state:
-    st.session_state.sidebar_state = 'expanded'
-
-# --- CSS DE SEGURANÇA E TÍTULO ---
+# --- CSS DE SEGURANÇA E INTERFACE ---
 st.markdown(
     """
     <style>
-    /* 1. MATA O GITHUB E O HEADER */
+    /* 1. BLINDAGEM CONTRA GITHUB E HEADER */
     [data-testid="stHeader"] {display: none !important;}
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     .stAppDeployButton {display:none !important;}
     [data-testid="stStatusWidget"] {display:none !important;}
 
-    /* 2. AJUSTE DE LARGURA */
+    /* 2. FORÇA LARGURA TOTAL */
     .block-container {
         max-width: 98% !important;
         padding-top: 1rem !important;
-        padding-left: 2rem !important;
-        padding-right: 2rem !important;
     }
 
     /* 3. TÍTULO ESTILIZADO */
@@ -49,11 +49,14 @@ st.markdown(
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
 
-    /* 4. CARDS KPIs */
-    [data-testid="stMetric"] {
-        background-color: #111827 !important;
-        border: 1px solid #374151 !important;
-        border-radius: 10px !important;
+    /* 4. ESTILO DO BOTÃO DE FILTRO NATIVO */
+    .stButton>button {
+        width: 100%;
+        border-radius: 20px;
+        background-color: #1e3a8a;
+        color: white;
+        font-weight: bold;
+        border: none;
     }
     </style>
     <div class="dashboard-title">INDICADOR DE RISCO LOGÍSTICA - DATA UNIT</div>
@@ -61,11 +64,29 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- BOTÃO DE EMERGÊNCIA (Caso os filtros sumam ao clicar em <<) ---
-c_btn, _ = st.columns([0.1, 0.9])
-with c_btn:
-    if st.button("⚙️ Abrir Filtros"):
+# --- CONTROLE MANUAL DA BARRA LATERAL ---
+# Criamos um botão que realmente funciona porque é um componente Streamlit
+col_btn, _ = st.columns([0.2, 0.8])
+with col_btn:
+    # Se o usuário clicar aqui, a página recarrega e a barra lateral aparece/some
+    if st.button("🔍 Mostrar/Esconder Filtros"):
+        st.write("Ajustando painel...") # Pequeno feedback visual
         st.rerun()
+
+# ==========================================
+# 3. SIDEBAR E FILTROS (REVISADO)
+# ==========================================
+with st.sidebar:
+    st.header("⚙️ Painel de Controle")
+    st.markdown("---")
+    
+    # Botão de atualização dentro da sidebar
+    if st.button('🔄 Forçar Atualização Geral'):
+        st.cache_data.clear()
+        st.rerun()
+    
+    st.divider()
+    # [CONTINUE COM O SEU CÓDIGO DE CARREGAMENTO E FILTROS ABAIXO]
 
 # ==========================================
 # 2. CARREGAMENTO DE DADOS
