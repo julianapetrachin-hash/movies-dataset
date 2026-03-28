@@ -17,60 +17,53 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    /* 1. Limpeza de Topo e GitHub */
+    /* 1. Limpeza total de lixo visual */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden !important;}
     .stAppDeployButton {display:none !important;} 
-    [data-testid="stStatusWidget"] {display:none !important;}
-    .stAppToolbar {display:none !important;}
-    a[href*="github.com"] {display:none !important;}
 
-    /* 2. FORÇA A LARGURA TOTAL E AJUSTA O RESPIRO LATERAL */
+    /* 2. FORÇAR A SETINHA DE FILTROS (SIDEBAR) A APARECER */
+    /* Usamos um seletor mais agressivo para o botão de colapso */
+    [data-testid="stSidebarCollapseButton"] {
+        visibility: visible !important;
+        display: block !important;
+        position: fixed !important;
+        top: 10px !important;
+        left: 10px !important;
+        z-index: 99999999 !important;
+        background-color: #1e3a8a !important; /* Azul forte */
+        color: white !important;
+        width: 50px !important;
+        height: 50px !important;
+        border-radius: 10px !important;
+        box-shadow: 0px 0px 15px rgba(30, 58, 138, 0.8) !important;
+    }
+    
+    /* Garante que o ícone dentro do botão seja branco e visível */
+    [data-testid="stSidebarCollapseButton"] svg {
+        fill: white !important;
+        width: 30px !important;
+        height: 30px !important;
+    }
+
+    /* 3. AJUSTE DE TELA CHEIA E RESPIRO */
     .main .block-container {
         max-width: 98% !important;
-        padding-top: 1.5rem !important;
-        padding-left: 4rem !important;
-        padding-right: 2rem !important;
+        padding-top: 1rem !important;
+        padding-left: 5rem !important; /* Abre espaço para o botão azul não cobrir o título */
     }
 
-    /* 3. BOTÃO DE FILTROS FLUTUANTE (AZUL) */
-    button[data-testid="stSidebarCollapseButton"] {
-        visibility: visible !important;
-        position: fixed !important;
-        top: 15px !important;
-        left: 15px !important;
-        z-index: 999999 !important;
-        background-color: #1e3a8a !important;
-        color: white !important;
-        border-radius: 50% !important;
-        width: 45px !important;
-        height: 45px !important;
-        box-shadow: 0px 4px 15px rgba(0,0,0,0.5) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-
-    /* 4. TÍTULO ESTILIZADO */
+    /* 4. TÍTULO E MÉTRICAS */
     .dashboard-title {
         background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%);
-        padding: 12px;
-        border-radius: 10px;
+        padding: 10px;
+        border-radius: 8px;
         color: white;
         text-align: center;
         font-weight: bold;
         font-size: 22px;
-        margin-bottom: 25px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    }
-
-    /* 5. CARDS KPIs PROFISSIONAIS */
-    [data-testid="stMetric"] {
-        background-color: #111827 !important;
-        border-radius: 12px !important;
-        padding: 15px !important;
-        border: 1px solid #374151 !important;
+        margin-bottom: 20px;
     }
     </style>
     <div class="dashboard-title">INDICADOR DE RISCO LOGÍSTICA - DATA UNIT</div>
