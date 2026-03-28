@@ -4,12 +4,20 @@ import plotly.graph_objects as go
 from datetime import datetime
 
 # ==========================================
-# 1. CONFIGURAÇÃO DA PÁGINA (ESTADO INICIAL)
+# 1. CONFIGURAÇÃO DA PÁGINA (WIDE MODE)
 # ==========================================
+st.set_page_config(
+    layout="wide", 
+    page_title="Dashboard Risco Logística", 
+    page_icon="🚛",
+    initial_sidebar_state="expanded"
+)
+
+# --- CSS DE LIMPEZA, SEGURANÇA E POSICIONAMENTO ---
 st.markdown(
     """
     <style>
-    /* 1. LIMPEZA TOTAL (GITHUB, FORK, HEADER) */
+    /* 1. Limpeza de Topo e GitHub */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden !important;}
@@ -17,33 +25,34 @@ st.markdown(
     [data-testid="stStatusWidget"] {display:none !important;}
     .stAppToolbar {display:none !important;}
     a[href*="github.com"] {display:none !important;}
-    
-    /* 2. RECUPERAÇÃO DO BOTÃO DE FILTROS (FORÇADO) */
-    /* Este código cria um botão azul flutuante no canto superior esquerdo */
+
+    /* 2. FORÇA A LARGURA TOTAL E AJUSTA O RESPIRO LATERAL */
+    .main .block-container {
+        max-width: 98% !important;
+        padding-top: 1.5rem !important;
+        padding-left: 4rem !important;
+        padding-right: 2rem !important;
+    }
+
+    /* 3. BOTÃO DE FILTROS FLUTUANTE (AZUL) */
     button[data-testid="stSidebarCollapseButton"] {
         visibility: visible !important;
         position: fixed !important;
         top: 15px !important;
         left: 15px !important;
-        z-index: 9999999 !important; /* Na frente de tudo mesmo! */
-        background-color: #1e3a8a !important; /* Azul igual ao título */
+        z-index: 999999 !important;
+        background-color: #1e3a8a !important;
         color: white !important;
         border-radius: 50% !important;
         width: 45px !important;
         height: 45px !important;
-        box-shadow: 0px 4px 15px rgba(0,0,0,0.6) !important;
+        box-shadow: 0px 4px 15px rgba(0,0,0,0.5) !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
     }
 
-    /* 3. AJUSTE DE ESPAÇAMENTO DO CONTEÚDO */
-    .block-container {
-        padding-top: 3rem !important;
-        margin-top: -20px;
-    }
-
-    /* 4. TÍTULO E CARDS */
+    /* 4. TÍTULO ESTILIZADO */
     .dashboard-title {
         background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%);
         padding: 12px;
@@ -51,16 +60,16 @@ st.markdown(
         color: white;
         text-align: center;
         font-weight: bold;
-        font-size: 24px;
-        margin-bottom: 30px;
-        position: relative;
-        z-index: 1000;
+        font-size: 22px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     }
 
+    /* 5. CARDS KPIs PROFISSIONAIS */
     [data-testid="stMetric"] {
         background-color: #111827 !important;
-        border-radius: 15px !important;
-        padding: 20px !important;
+        border-radius: 12px !important;
+        padding: 15px !important;
         border: 1px solid #374151 !important;
     }
     </style>
@@ -102,20 +111,22 @@ with st.sidebar:
     st.divider()
 
     if not df_raw.empty:
+        st.subheader("Filtros de Pesquisa")
         datas_todas = sorted(df_raw['DATA'].unique(), reverse=True)
-        sel_date = st.selectbox("📅 Data", options=datas_todas, index=0)
+        sel_date = st.selectbox("📅 Selecione a Data", options=datas_todas, index=0)
         
         col_tipo, col_cd = 'TIPO', 'CD'
         tipos_disp = sorted(df_raw[col_tipo].unique()) if col_tipo in df_raw.columns else []
-        sel_tipos = st.multiselect("Tipo", options=tipos_disp, default=tipos_disp)
+        sel_tipos = st.multiselect("Tipo de Unidade", options=tipos_disp, default=tipos_disp)
         
         cds_filtrados = df_raw[df_raw[col_tipo].isin(sel_tipos)][col_cd].unique()
-        sel_cds = st.multiselect("CDs", options=sorted(cds_filtrados), default=sorted(cds_filtrados))
+        sel_cds = st.multiselect("Filiais (CDs)", options=sorted(cds_filtrados), default=sorted(cds_filtrados))
     else:
+        st.warning("Aguardando conexão com a planilha...")
         st.stop()
 
 # ==========================================
-# 4. CONTEÚDO VISUAL
+# 4. CONTEÚDO VISUAL (DASHBOARD)
 # ==========================================
 @st.fragment(run_every=600)
 def render_dashboard(df_all, date_val, cds_val):
@@ -129,7 +140,7 @@ def render_dashboard(df_all, date_val, cds_val):
     df_at = df_all[(df_all['DATA'] == date_val) & (df_all[col_cd].isin(cds_val))].copy()
     df_ps = df_all[(df_all['DATA'] == date_ant) & (df_all[col_cd].isin(cds_val))].copy()
 
-    # --- KPIs ---
+    # --- KPIs em Colunas Proporcionais ---
     c1, c2, c3, c4 = st.columns([1.5, 1, 1, 1])
 
     with c1:
@@ -162,7 +173,7 @@ def render_dashboard(df_all, date_val, cds_val):
     with c4:
         st.metric(label="DVG Atual", value=f"R$ {df_at[col_dvg].sum()/1000:,.1f}k")
 
-    st.markdown("---")
+    st.divider()
 
     # --- GRÁFICO PARETO ---
     st.subheader("Concentração de DVG por Unidade")
@@ -182,14 +193,12 @@ def render_dashboard(df_all, date_val, cds_val):
     def style_performance(styler):
         styler.format({col_dvg: 'R$ {:,.1f}k', col_risco: '{:.2f}', col_malha: '{:,.0f}', col_rectec: 'R$ {:,.0f}k'})
         styler.background_gradient(cmap='RdYlGn_r', subset=[col_dvg])
-        
         def color_contrast(val):
             if isinstance(val, (int, float)):
                 if val < 1.0: return 'background-color: #22c55e; color: white; font-weight: bold;'
                 if val < 2.0: return 'background-color: #eab308; color: black; font-weight: bold;'
                 return 'background-color: #ef4444; color: white; font-weight: bold;'
             return ''
-        
         styler.map(color_contrast, subset=[col_risco])
         styler.set_properties(**{'text-align': 'center', 'border': '1px solid #374151'})
         return styler
