@@ -9,7 +9,7 @@ st.set_page_config(layout="wide", initial_sidebar_state="expanded")
 st.markdown(
     """
     <style>
-    /* 1. FORÇA LARGURA TOTAL SEM ERRO */
+    /* 1. FORÇA LARGURA TOTAL */
     .block-container {
         max-width: 98% !important;
         padding-top: 1rem !important;
@@ -17,25 +17,31 @@ st.markdown(
         padding-right: 2rem !important;
     }
 
-    /* 2. LIMPEZA SUTIL (Não mata a setinha dos filtros) */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    .stAppDeployButton {display:none !important;}
+    /* 2. GOLPE DE MISERICÓRDIA NO GITHUB E FERRAMENTAS */
+    /* Esconde a barra superior inteira */
+    [data-testid="stHeader"] {display: none !important;}
     
-    /* Esconde o ícone do GitHub e a barra de status sem matar o header */
+    /* Esconde especificamente o menu de ferramentas (onde fica o ícone do Git) */
+    .stAppToolbar {display: none !important;}
+    
+    /* Esconde o widget de status e deploy */
     [data-testid="stStatusWidget"] {display: none !important;}
-    header {background-color: rgba(0,0,0,0) !important; color: rgba(0,0,0,0) !important;}
+    .stAppDeployButton {display: none !important;}
+
+    /* Remove qualquer link que aponte para o GitHub */
+    a[href*="github.com"] {display: none !important;}
 
     /* 3. TÍTULO ESTILIZADO */
     .dashboard-title {
         background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%);
-        padding: 15px;
+        padding: 12px;
         border-radius: 8px;
         color: white;
         text-align: center;
         font-weight: bold;
         font-size: 22px;
         margin-bottom: 25px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
 
     /* 4. CARDS KPIs */
@@ -43,6 +49,11 @@ st.markdown(
         background-color: #111827 !important;
         border: 1px solid #374151 !important;
         border-radius: 10px !important;
+    }
+    
+    /* 5. SIDEBAR (FILTROS) - Ajuste de cor para contraste */
+    [data-testid="stSidebar"] {
+        background-color: #111827 !important;
     }
     </style>
     <div class="dashboard-title">INDICADOR DE RISCO LOGÍSTICA - DATA UNIT</div>
