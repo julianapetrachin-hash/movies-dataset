@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 import re
 
-# 1. CONFIGURAÇÃO DA PÁGINA (Deve ser o primeiro comando Streamlit)
+# 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(layout="wide", page_title="Magalog | Business Intelligence", page_icon="📊")
 
 # --- ESTILIZAÇÃO CSS ---
@@ -14,19 +14,20 @@ st.markdown("""
         background-color: #161b22;
         border: 1px solid #30363d;
         border-radius: 12px;
-        padding: 20px;
-        height: 140px;
+        padding: 15px;
+        min-height: 160px;
         display: flex;
         flex-direction: column;
         justify-content: center;
     }
-    .metric-label { color: #8b949e; font-size: 12px; font-weight: 600; text-transform: uppercase; margin-bottom: 8px; }
-    .metric-value { color: #f0f6fc; font-size: 24px; font-weight: 700; }
-    .progress-container { background-color: #30363d; border-radius: 10px; height: 8px; width: 100%; margin-top: 15px; }
-    .progress-bar { background: linear-gradient(90deg, #58a6ff 0%, #00f2ff 100%); height: 8px; border-radius: 10px; transition: width 0.5s ease-in-out; }
-    .perc-text { color: #58a6ff; font-size: 12px; font-weight: 600; margin-top: 5px; }
-    .header-container { padding: 1rem 0; margin-bottom: 2rem; border-bottom: 1px solid #30363d; text-align: center; }
-    .main-title { color: #f0f6fc; font-size: 26px; font-weight: 700; }
+    .metric-label { color: #8b949e; font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
+    .metric-value { color: #f0f6fc; font-size: 22px; font-weight: 700; margin-bottom: 5px; }
+    .metric-subtext { color: #8b949e; font-size: 12px; line-height: 1.4; }
+    .highlight-blue { color: #58a6ff; font-weight: 700; }
+    .progress-container { background-color: #30363d; border-radius: 10px; height: 6px; width: 100%; margin-top: 10px; }
+    .progress-bar { background: linear-gradient(90deg, #58a6ff 0%, #00f2ff 100%); height: 6px; border-radius: 10px; }
+    .header-container { padding: 1rem 0; margin-bottom: 1.5rem; border-bottom: 1px solid #30363d; text-align: center; }
+    .main-title { color: #f0f6fc; font-size: 24px; font-weight: 700; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -48,34 +49,29 @@ def mapear_divisional(cd_bruto):
     else: return 'Outros'
 
 # --- CARREGAMENTO DE DADOS ---
-SHEET_ID = "1iaHnigQGOH5w4xFlZXN0cXYSZlLqPuHE1Pdsgy0XSdI"
-GID_MAIN = "1358149674"
-
 @st.cache_data
 def load_data():
+    SHEET_ID = "1iaHnigQGOH5w4xFlZXN0cXYSZlLqPuHE1Pdsgy0XSdI"
+    GID_MAIN = "1358149674"
     url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID_MAIN}"
     df = pd.read_csv(url).dropna(how='all')
     df.columns = [re.sub(r'[^a-zA-Z0-9]', '_', str(c).strip().lower()) for c in df.columns]
     return df
 
 try:
-    # 1. Carrega os dados primeiro
     df_raw = load_data()
 
-    # 2. Sidebar com Botão de Atualização
+    # Sidebar
     with st.sidebar:
         st.header("⚙️ Gerenciamento")
         if st.button("🔄 Atualizar Dados"):
             st.cache_data.clear()
             st.rerun()
-        
         st.divider()
-        st.header("Filtros")
         
-        # Processamento básico para os filtros
-        for col_txt in ['semestre', 'tipo', 'cd', 'local']:
-            if col_txt in df_raw.columns: 
-                df_raw[col_txt] = df_raw[col_txt].astype(str).str.strip()
+        # Ajuste de tipos
+        for col_txt in ['semestre', 'tipo', 'cd']:
+            if col_txt in df_raw.columns: df_raw[col_txt] = df_raw[col_txt].astype(str).str.strip()
         
         df_raw['tipo_clean'] = df_raw['tipo'].str.upper()
         df_raw['divisional'] = df_raw['cd'].apply(mapear_divisional)
@@ -84,72 +80,109 @@ try:
         divs_sel = st.multiselect("Divisional", options=sorted(df_raw['divisional'].unique()))
         semestre_sel = st.multiselect("Semestre", options=sorted(df_raw['semestre'].unique()))
 
-    # --- PROCESSAMENTO DOS VALORES NUMÉRICOS ---
-    cols_num = ["1__ciclo", "2__ciclo", "3__ciclo", "faturamento__lojas___site_", "falta_vol"]
-    for col in cols_num:
-        df_raw[col + "_num"] = df_raw[col].apply(limpar_valor) if col in df_raw.columns else 0.0
+    # Processamento Numérico
+    # Mapeando nomes de colunas via regex (ajuste conforme o csv real)
+    col_fat = [c for c in df_raw.columns if 'faturamento' in c][0]
+    col_1c = [c for c in df_raw.columns if '1__ciclo' in c][0]
+    col_falta = [c for c in df_raw.columns if 'falta_vol' in c][0]
 
-    df_raw['is_finalizado'] = (df_raw["1__ciclo_num"] != 0) | (df_raw["2__ciclo_num"] != 0) | (df_raw["3__ciclo_num"] != 0)
-    df_raw['perc_perda_unidade'] = (df_raw["1__ciclo_num"].abs() / df_raw["faturamento__lojas___site__num"]) * 100
-    df_raw['perc_perda_unidade'] = df_raw['perc_perda_unidade'].fillna(0.0).replace([float('inf')], 0.0)
+    df_raw['v_1c'] = df_raw[col_1c].apply(limpar_valor)
+    df_raw['v_fat'] = df_raw[col_fat].apply(limpar_valor)
+    df_raw['v_falta'] = df_raw[col_falta].apply(limpar_valor)
+    
+    # Marcadores de Status
+    df_raw['is_finalizado'] = df_raw['v_1c'] != 0
+    df_raw['is_pendente'] = ~df_raw['is_finalizado']
 
-    # Aplicação dos Filtros
+    # Filtros
     df_filt = df_raw.copy()
     if tipos_sel: df_filt = df_filt[df_filt['tipo_clean'].isin(tipos_sel)]
     if divs_sel: df_filt = df_filt[df_filt['divisional'].isin(divs_sel)]
     if semestre_sel: df_filt = df_filt[df_filt['semestre'].isin(semestre_sel)]
 
-    # --- DASHBOARD UI ---
+    # DASHBOARD UI
     st.markdown('<div class="header-container"><span class="main-title">BI FECHAMENTO MAGALOG 2026</span></div>', unsafe_allow_html=True)
 
-    # Cálculos
+    # Cálculos para os Cards
+    perda_1c = df_filt['v_1c'].sum()
+    falta_vol = df_filt['v_falta'].sum()
+    fat_total = df_filt['v_fat'].sum()
+    
+    # Nova Métrica: Perda Consolidada (1C + Falta)
+    perda_consolidada = perda_1c + falta_vol
+    perc_global_consolidada = (abs(perda_consolidada) / fat_total * 100) if fat_total > 0 else 0.0
+
+    # Cálculos de Status
     total_un = len(df_filt)
     finalizados = df_filt['is_finalizado'].sum()
     perc_conclusao = (finalizados / total_un * 100) if total_un > 0 else 0
-    perda_total = df_filt["1__ciclo_num"].sum()
-    falta_vol = df_filt["falta_vol_num"].sum()
-    fat_total = df_filt["faturamento__lojas___site__num"].sum()
-    perc_global = (abs(perda_total) / fat_total * 100) if fat_total > 0 else 0.0
-
-    # Funções de Card (HTML)
-    def card_com_progresso(label, value, percent, sub_text):
-        return f"""<div class="metric-card"><div class="metric-label">{label}</div><div class="metric-value">{value}</div><div class="perc-text">{sub_text} ({percent:.1f}%)</div><div class="progress-container"><div class="progress-bar" style="width: {percent}%"></div></div></div>"""
     
-    def card_simples(label, value, sub):
-        return f"""<div class="metric-card"><div class="metric-label">{label}</div><div class="metric-value">{value}</div><div class="perc-text" style="color: #8b949e;">{sub}</div></div>"""
+    # Pendentes por Semestre
+    pend_1s = len(df_filt[(df_filt['is_pendente']) & (df_filt['semestre'].str.contains('1'))])
+    pend_2s = len(df_filt[(df_filt['is_pendente']) & (df_filt['semestre'].str.contains('2'))])
 
-    # Exibição dos Cards
-    c1, c2, c3, c4 = st.columns([1, 1, 1, 1.5])
-    c1.markdown(card_simples("1º Ciclo Total", f"R$ {perda_total:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'), "Perda Financeira"), unsafe_allow_html=True)
-    c2.markdown(card_simples("Falta Vol.", f"{falta_vol:,.0f}".replace('.', ','), "Itens Faltantes"), unsafe_allow_html=True)
-    c3.markdown(card_simples("% Perda Global", f"{perc_global:.3f}%", "Sobre Faturamento"), unsafe_allow_html=True)
-    c4.markdown(card_com_progresso("Status de Evolução", f"{int(finalizados)} / {total_un}", perc_conclusao, "Finalizadas"), unsafe_allow_html=True)
+    # Layout de Colunas para os Cards
+    c1, c2, c3 = st.columns([1.2, 1, 1.2])
+
+    with c1:
+        st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Perda Consolidada (1C + Falta)</div>
+                <div class="metric-value">R$ {perda_consolidada:,.2f}</div>
+                <div class="metric-subtext">
+                    1º Ciclo: R$ {perda_1c:,.2f}<br>
+                    Falta Vol: {falta_vol:,.0f} itens
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with c2:
+        st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">% Perda Global</div>
+                <div class="metric-value">{perc_global_consolidada:.3f}%</div>
+                <div class="metric-subtext">Baseado na soma de perdas<br>sobre faturamento total.</div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with c3:
+        st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Status de Evolução</div>
+                <div class="metric-value">{int(finalizados)} / {total_un} <span style="font-size:14px; color:#58a6ff;">({perc_conclusao:.1f}%)</span></div>
+                <div class="metric-subtext">
+                    Pendentes 1º Sem: <span class="highlight-blue">{pend_1s}</span><br>
+                    Pendentes 2º Sem: <span class="highlight-blue">{pend_2s}</span>
+                </div>
+                <div class="progress-container"><div class="progress-bar" style="width: {perc_conclusao}%"></div></div>
+            </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Gráficos
+    # Gráficos e Tabela (Mantidos conforme original)
     col_g1, col_g2 = st.columns([1, 1.2])
     with col_g1:
         st.subheader("Perda por Divisional")
-        fig = px.pie(df_filt, values=df_filt["1__ciclo_num"].abs(), names='divisional', hole=0.7, color_discrete_sequence=px.colors.qualitative.Pastel)
+        fig = px.pie(df_filt, values=df_filt['v_1c'].abs(), names='divisional', hole=0.7)
         fig.update_layout(template="plotly_dark", height=350, margin=dict(t=20, b=20), paper_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig, use_container_width=True)
 
     with col_g2:
         st.subheader("Treemap de Saúde")
-        df_tree = df_filt[df_filt["1__ciclo_num"] != 0].copy()
+        df_tree = df_filt[df_filt['v_1c'] != 0].copy()
         if not df_tree.empty:
-            df_tree['abs_val'] = df_tree["1__ciclo_num"].abs()
-            fig_t = px.treemap(df_tree, path=['tipo_clean', 'cd'], values='abs_val', color='1__ciclo_num', color_continuous_scale='RdBu_r')
+            df_tree['abs_val'] = df_tree['v_1c'].abs()
+            fig_t = px.treemap(df_tree, path=['divisional', 'cd'], values='abs_val', color='v_1c', color_continuous_scale='RdBu_r')
             fig_t.update_layout(template="plotly_dark", height=350, margin=dict(t=30, b=0), paper_bgcolor='rgba(0,0,0,0)')
             st.plotly_chart(fig_t, use_container_width=True)
 
     st.subheader("Detalhamento Geral")
     st.dataframe(
-        df_filt[['semestre', 'tipo_clean', 'divisional', 'cd', 'local', '1__ciclo_num', 'perc_perda_unidade', 'is_finalizado']],
+        df_filt[['semestre', 'tipo_clean', 'divisional', 'cd', 'local', 'v_1c', 'v_falta', 'is_finalizado']],
         column_config={
-            "1__ciclo_num": st.column_config.NumberColumn("Resultado 1C", format="R$ %.2f"),
-            "perc_perda_unidade": st.column_config.NumberColumn("% Perda", format="%.3f%%"),
+            "v_1c": st.column_config.NumberColumn("Resultado 1C", format="R$ %.2f"),
+            "v_falta": st.column_config.NumberColumn("Falta Vol", format="%.0f"),
             "is_finalizado": st.column_config.CheckboxColumn("Finalizado?")
         },
         use_container_width=True, hide_index=True
