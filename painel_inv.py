@@ -6,7 +6,7 @@ import re
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(layout="wide", page_title="Magalog | BI Executive", page_icon="📊")
 
-# --- CSS REFINADO (5 Cards, Fonte Grande, Neon) ---
+# --- ESTILIZAÇÃO CSS (Big Numbers + 5 Cards) ---
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] { background-color: #0d1117 !important; }
@@ -19,20 +19,15 @@ st.markdown("""
     }
     .header-title { color: white !important; font-size: 26px !important; font-weight: 800 !important; margin:0; }
 
-    /* Estilo dos Cards - Fonte aumentada */
     .card-kpi {
         background: #161b22; border: 1px solid #30363d;
         border-radius: 12px; padding: 15px; text-align: center;
         min-height: 125px; border-bottom: 4px solid #00d2ff;
     }
     .label-kpi { color: #8b949e; font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
-    
-    /* Aumentando o tamanho do número principal */
     .value-kpi { color: #f0f6fc; font-size: 32px !important; font-weight: 900 !important; margin: 5px 0; letter-spacing: -1px; }
-    
     .sub-kpi { color: #00d2ff; font-size: 12px; font-weight: 500; }
 
-    /* Barras de Target */
     .target-container {
         background: #21262d; border-radius: 4px; height: 25px; 
         position: relative; overflow: hidden; margin: 10px 0;
@@ -75,7 +70,6 @@ try:
     df_raw['tipo_clean'] = df_raw['tipo'].fillna('').astype(str).str.upper().str.strip()
     df_raw['divisional'] = df_raw['cd'].apply(mapear_divisional)
     
-    # Mapeamento de colunas
     c_1c = next((c for c in df_raw.columns if '1__ciclo' in c), None)
     c_fat = next((c for c in df_raw.columns if 'faturamento' in c), None)
     c_fal = next((c for c in df_raw.columns if 'falta_vol' in c), None)
@@ -85,7 +79,6 @@ try:
     df_raw['v_falta'] = df_raw[c_fal].apply(limpar_valor) if c_fal else 0.0
     df_raw['is_fin'] = df_raw['v_1c'] != 0
 
-    # SIDEBAR REATIVADA
     with st.sidebar:
         st.header("⚙️ Gerenciamento")
         if st.button("🔄 Atualizar Dados"): st.cache_data.clear(); st.rerun()
@@ -106,45 +99,47 @@ try:
     total_uds = len(df_filt); fechadas = df_filt['is_fin'].sum(); pendentes = total_uds - fechadas
     target_pos = 70
 
-    # AGORA COM 5 COLUNAS (Removida a Média)
+    # 5 CARDS KPI
     m1, m2, m3, m4, m5 = st.columns(5)
-    
     with m1: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Perda Consolidada</div><div class="value-kpi">R$ {perda_total:,.0f}</div><div class="sub-kpi">1C + Falta Vol</div></div>', unsafe_allow_html=True)
     with m2: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Volume Falta</div><div class="value-kpi">R$ {vfal:,.0f}</div><div class="sub-kpi">{abs(perc_falta):.1f}% do Total</div></div>', unsafe_allow_html=True)
     with m3: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Total Unidades</div><div class="value-kpi">{total_uds}</div><div class="sub-kpi">Base Cadastrada</div></div>', unsafe_allow_html=True)
-    
     with m4:
         pf = (fechadas/total_uds*100) if total_uds > 0 else 0
         st.markdown(f'''<div class="card-kpi"><div class="label-kpi">Finalizadas</div><div class="target-container"><div class="target-fill" style="width:{pf}%;"></div><div class="target-line" style="left:{target_pos}%;"></div><div class="target-text">{fechadas}</div></div>
         <div style="display:flex;justify-content:space-between;"><span class="target-label">0</span><span class="target-label">target</span><span class="target-label">{total_uds}</span></div></div>''', unsafe_allow_html=True)
-    
     with m5:
         pp = (pendentes/total_uds*100) if total_uds > 0 else 0
         st.markdown(f'''<div class="card-kpi"><div class="label-kpi">Pendentes</div><div class="target-container" style="background:#2a1b1b;"><div class="target-fill" style="width:{pp}%;background:#ff4b4b;"></div><div class="target-line" style="left:{target_pos}%;background:#ff4b4b;"></div><div class="target-text">{pendentes}</div></div>
         <div style="display:flex;justify-content:space-between;"><span class="target-label">0</span><span class="target-label">target</span><span class="target-label">{total_uds}</span></div></div>''', unsafe_allow_html=True)
 
-    # --- GRÁFICOS E TABELA ---
+    # --- GRÁFICOS DO MEIO ---
     st.markdown("<br>", unsafe_allow_html=True)
     g1, g2 = st.columns([1, 1.1])
+    
     with g1:
-        st.subheader("📊 Resultado Consolidado")
-        df_p = df_filt.groupby('tipo_clean')[['v_1c', 'v_falta']].sum().sum(axis=1).reset_index(name='res')
-        fig_b = px.bar(df_p, x='tipo_clean', y=df_p['res'].abs(), text='res', color='tipo_clean', color_discrete_map={'CD':'#3a7bd5','LV':'#7000ff','DQS':'#00f2ff'})
+        st.subheader("📊 Resultado Consolidado (1C + Falta)")
+        df_proc = df_filt.copy()
+        df_proc['res_total'] = df_proc['v_1c'] + df_proc['v_falta']
+        df_plot = df_proc.groupby('tipo_clean')['res_total'].sum().reset_index()
+        fig_b = px.bar(df_plot, x='tipo_clean', y=df_plot['res_total'].abs(), text='res_total', color='tipo_clean', 
+                       color_discrete_map={'CD':'#3a7bd5','LV':'#7000ff','DQS':'#00f2ff'})
         fig_b.update_traces(texttemplate='R$ %{text:,.0f}', textposition='outside')
         fig_b.update_layout(template="plotly_dark", height=380, showlegend=False, yaxis_visible=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig_b, use_container_width=True)
 
     with g2:
-        st.subheader("🏢 Status de Saúde")
-        df_tree = df_filt.copy(); df_tree['res'] = df_tree['v_1c'] + df_tree['v_falta']
-        df_tree = df_tree[df_tree['res'] != 0].copy()
+        # ALTERAÇÃO: Agora exibe apenas o v_1c (Resultado do Ciclo) conforme solicitado
+        st.subheader("🏢 Status de Saúde (Apenas 1º Ciclo)")
+        df_tree = df_filt[df_filt['v_1c'] != 0].copy()
         df_tree['cd_lbl'] = df_tree['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
-        fig_t = px.treemap(df_tree, path=['tipo_clean', 'cd_lbl'], values=df_tree['res'].abs(), color='tipo_clean', color_discrete_map={'CD':'#0040ff','LV':'#aa00ff','DQS':'#00d2ff'})
+        fig_t = px.treemap(df_tree, path=['tipo_clean', 'cd_lbl'], values=df_tree['v_1c'].abs(), color='tipo_clean', 
+                           color_discrete_map={'CD':'#0040ff','LV':'#aa00ff','DQS':'#00d2ff'})
         fig_t.update_traces(textinfo="label+value", texttemplate="<b>%{label}</b><br>R$ %{value:,.0f}")
         fig_t.update_layout(template="plotly_dark", height=380, margin=dict(t=20, b=10, l=0, r=0))
         st.plotly_chart(fig_t, use_container_width=True)
 
-    # TABELA E PIZZA
+    # --- BASE (TABELA + PIZZA) ---
     st.markdown("<br>", unsafe_allow_html=True)
     b1, b2 = st.columns([3, 1.2])
     with b1:
@@ -154,7 +149,7 @@ try:
         df_tab['cd_t'] = df_tab['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
         df_ex = df_tab[['semestre', 'tipo_clean', 'divisional', 'cd_t', 'local', 'v_1c', '%', 'v_falta', 'is_fin']]
         st.dataframe(df_ex.style.apply(lambda r: ['background-color: #451a1a' if r['v_1c'] < 0 else 'background-color: #1a4523']*len(r), axis=1),
-                     column_config={"v_1c": st.column_config.NumberColumn("Resultado", format="R$ %.2f"), "%": st.column_config.NumberColumn("%", format="%.4f%%"), "v_falta": st.column_config.NumberColumn("Falta", format="%.0f")},
+                     column_config={"v_1c": st.column_config.NumberColumn("Resultado", format="R$ %.2f"), "%": st.column_config.NumberColumn("%", format="%.3f%%"), "v_falta": st.column_config.NumberColumn("Falta", format="%.0f")},
                      use_container_width=True, hide_index=True, height="content")
     with b2:
         st.subheader("📍 Perda / Gerente")
