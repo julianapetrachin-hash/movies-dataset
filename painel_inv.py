@@ -170,9 +170,52 @@ try:
         </div>
         ''', unsafe_allow_html=True)
     with c4: 
+        # 1. Cálculos de resumo por tipo
+        resumo_tipos = df_filt.groupby('tipo_clean').agg(
+            Total=('tipo_clean', 'count'),
+            Fim=('is_fin', 'sum')
+        ).reset_index()
+        resumo_tipos['Pen'] = resumo_tipos['Total'] - resumo_tipos['Fim']
+
+        # 2. Construção da mini tabela em HTML
+        linhas_html = ""
+        for _, row in resumo_tipos.iterrows():
+            linhas_html += f"""
+                <tr>
+                    <td style="text-align:left; color:#8b949e;">{row['tipo_clean']}</td>
+                    <td style="color:#f0f6fc;">{row['Total']}</td>
+                    <td style="color:#3fb950;">{row['Fim']}</td>
+                    <td style="color:#ff4b4b;">{row['Pen']}</td>
+                </tr>
+            """
+
+        tabela_html = f"""
+            <table style="width:100%; font-size:10px; margin-top:10px; border-top:1px solid #30363d;">
+                <thead>
+                    <tr style="color:#8b949e; text-transform:uppercase;">
+                        <th style="text-align:left;">Tipo</th>
+                        <th>Tot</th>
+                        <th>Fim</th>
+                        <th>Pen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {linhas_html}
+                </tbody>
+            </table>
+        """
+
+        # 3. Renderização do Card
         perc_finalizadas = (fechadas / total_uds * 100) if total_uds > 0 else 0
-        st.markdown(f'<div class="card-kpi"><div class="label-kpi">Total Unidades</div><div class="value-kpi">{total_uds}</div><div class="sub-kpi">{perc_finalizadas:.1f}% Finalizadas</div></div>', unsafe_allow_html=True)
-    with c5:
+        
+        st.markdown(f'''
+            <div class="card-kpi" style="min-height: 180px;">
+                <div class="label-kpi">Total Unidades</div>
+                <div class="value-kpi" style="margin-bottom:0;">{total_uds}</div>
+                <div class="sub-kpi">{perc_finalizadas:.1f}% Finalizadas</div>
+                {tabela_html}
+            </div>
+        ''', unsafe_allow_html=True)
         pf = (fechadas/total_uds*100) if total_uds > 0 else 0
         st.markdown(f'''<div class="card-kpi"><div class="label-kpi">Finalizadas</div><div class="target-container"><div class="target-fill" style="width:{pf}%;"></div><div class="target-line" style="left:{target_pos}%;"></div><div class="target-text">{fechadas}</div></div>
         <div style="display:flex;justify-content:space-between;"><span class="target-label">0</span><span class="target-label">target</span><span class="target-label">{total_uds}</span></div></div>''', unsafe_allow_html=True)
