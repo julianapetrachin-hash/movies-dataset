@@ -214,7 +214,7 @@ try:
         df_tab = df_filt.copy()
         df_tab['%'] = (df_tab['v_1c'] / df_tab['v_fat'] * 100).fillna(0)
         df_tab['cd_t'] = df_tab['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
-        df_ex = df_tab[['semestre', 'tipo_clean', 'divisional', 'cd_t', 'local', 'v_1c', '%', 'v_falta', 'is_fin']]
+        df_ex = df_tab[['SEMESTRE', 'TIPO', 'DIVISIONAL', 'UNIDADE', 'LOCALIDADE', 'v_1c', '%', 'v_falta', 'is_fin']]
         st.dataframe(df_ex.style.apply(lambda r: ['background-color: #451a1a' if r['v_1c'] < 0 else 'background-color: #1a4523']*len(r), axis=1),
                      column_config={"v_1c": st.column_config.NumberColumn("Resultado", format="R$ %.2f"), "%": st.column_config.NumberColumn("%", format="%.3f%%"), "v_falta": st.column_config.NumberColumn("Falta", format="%.0f")},
                      use_container_width=True, hide_index=True, height="content")
