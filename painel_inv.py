@@ -173,8 +173,32 @@ try:
     with g2:
         st.subheader("Visão Geral por CD")
         if not df_filt.empty:
-            fig_t = px.treemap(df_filt[df_filt['v_1c'] != 0], path=['divisional', 'cd'], values=df_filt[df_filt['v_1c'] != 0]['v_1c'].abs(), color='v_1c', color_continuous_scale='RdBu_r')
-            fig_t.update_layout(template="plotly_dark", height=300, margin=dict(t=0, b=0, l=0, r=0), paper_bgcolor='rgba(0,0,0,0)')
+            # --- CURA DOS DADOS DO TREEMAP ---
+            # Criamos um DataFrame temporário apenas para o gráfico para formatar os CDs
+            df_tree = df_filt[df_filt['v_1c'] != 0].copy()
+            
+            # Converte CD para string e remove o '.0' caso exista
+            df_tree['cd'] = df_tree['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
+            
+            # Geramos o gráfico usando o df_tree formatado
+            fig_t = px.treemap(
+                df_tree, 
+                path=['divisional', 'cd'], 
+                values=df_tree['v_1c'].abs(), 
+                color='v_1c', 
+                color_continuous_scale='RdBu_r'
+            )
+            
+            fig_t.update_layout(
+                template="plotly_dark", 
+                height=300, 
+                margin=dict(t=10, b=10, l=10, r=10), 
+                paper_bgcolor='rgba(0,0,0,0)'
+            )
+            
+            # Ajuste extra: Garante que o texto exibido no gráfico seja o CD limpo
+            fig_t.update_traces(textinfo="label+value")
+            
             st.plotly_chart(fig_t, use_container_width=True)
 
     # Tabela Final
