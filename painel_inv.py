@@ -6,34 +6,46 @@ import re
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(layout="wide", page_title="Magalog | BI Executive", page_icon="📊")
 
-# --- ESTILIZAÇÃO CSS (Big Numbers + 5 Cards) ---
+# --- ESTILIZAÇÃO CSS (Cards Flutuantes + Big Numbers) ---
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] { background-color: #0d1117 !important; }
     .main { padding: 0rem !important; }
     
+    /* Header Custom */
     .header-box {
         background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%) !important;
-        padding: 1rem; border-radius: 0 0 15px 15px; text-align: center;
-        margin-bottom: 1.5rem; box-shadow: 0 4px 20px rgba(0, 210, 255, 0.3);
+        padding: 1.5rem; border-radius: 0 0 15px 15px; text-align: center;
+        margin-bottom: 2rem; box-shadow: 0 4px 20px rgba(0, 210, 255, 0.3);
     }
-    .header-title { color: white !important; font-size: 26px !important; font-weight: 800 !important; margin:0; }
+    .header-title { color: white !important; font-size: 28px !important; font-weight: 800 !important; margin:0; }
+
+    /* EFEITO FLUTUANTE PARA CARDS E GRÁFICOS */
+    .stPlotlyChart, div[data-testid="stDataFrame"], .card-kpi {
+        background-color: #161b22 !important;
+        padding: 15px !important;
+        border-radius: 15px !important;
+        border: 1px solid #30363d !important;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.4) !important; /* Efeito flutuante */
+        margin-bottom: 10px !important;
+    }
 
     .card-kpi {
-        background: #161b22; border: 1px solid #30363d;
-        border-radius: 12px; padding: 15px; text-align: center;
-        min-height: 125px; border-bottom: 4px solid #00d2ff;
+        text-align: center;
+        min-height: 130px;
+        border-bottom: 4px solid #00d2ff !important;
     }
     .label-kpi { color: #8b949e; font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
-    .value-kpi { color: #f0f6fc; font-size: 32px !important; font-weight: 900 !important; margin: 5px 0; letter-spacing: -1px; }
+    .value-kpi { color: #f0f6fc; font-size: 30px !important; font-weight: 900 !important; margin: 5px 0; }
     .sub-kpi { color: #00d2ff; font-size: 12px; font-weight: 500; }
 
+    /* Barra de Target */
     .target-container {
         background: #21262d; border-radius: 4px; height: 25px; 
         position: relative; overflow: hidden; margin: 10px 0;
         display: flex; align-items: center; justify-content: center;
     }
-    .target-fill { background: #00d2ff; height: 100%; position: absolute; left: 0; z-index: 1; box-shadow: 0 0 10px #00d2ff; }
+    .target-fill { background: #00d2ff; height: 100%; position: absolute; left: 0; z-index: 1; }
     .target-text { color: white; font-weight: 800; z-index: 2; font-size: 13px; }
     .target-line { position: absolute; height: 100%; width: 2px; background: #00f2ff; z-index: 3; }
     .target-label { font-size: 9px; color: #8b949e; }
@@ -93,17 +105,21 @@ try:
     st.markdown('<div class="header-box"><p class="header-title">BI FECHAMENTO MAGALOG 2026</p></div>', unsafe_allow_html=True)
 
     # CÁLCULOS
-    p1c = df_filt['v_1c'].sum(); vfal = df_filt['v_falta'].sum()
+    p1c = df_filt['v_1c'].sum(); vfal = df_filt['v_falta'].sum(); fat_total = df_filt['v_fat'].sum()
     perda_total = p1c + vfal
+    
+    # VOLTA DO PERCENTUAL GLOBAL
+    perc_global = (abs(perda_total) / fat_total * 100) if fat_total > 0 else 0
     perc_falta = (vfal / perda_total * 100) if perda_total != 0 else 0
+    
     total_uds = len(df_filt); fechadas = df_filt['is_fin'].sum(); pendentes = total_uds - fechadas
     target_pos = 70
 
-    # 5 CARDS KPI
+    # 5 CARDS KPI REORGANIZADOS
     m1, m2, m3, m4, m5 = st.columns(5)
-    with m1: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Perda Consolidada</div><div class="value-kpi">R$ {perda_total:,.0f}</div><div class="sub-kpi">1C + Falta Vol</div></div>', unsafe_allow_html=True)
-    with m2: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Volume Falta</div><div class="value-kpi">R$ {vfal:,.0f}</div><div class="sub-kpi">{abs(perc_falta):.1f}% do Total</div></div>', unsafe_allow_html=True)
-    with m3: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Total Unidades</div><div class="value-kpi">{total_uds}</div><div class="sub-kpi">Base Cadastrada</div></div>', unsafe_allow_html=True)
+    with m1: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Perda Consolidada</div><div class="value-kpi">R$ {perda_total:,.0f}</div><div class="sub-kpi">Impacto: {perc_global:.3f}% do Fat.</div></div>', unsafe_allow_html=True)
+    with m2: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Volume Falta</div><div class="value-kpi">R$ {vfal:,.0f}</div><div class="sub-kpi">{abs(perc_falta):.1f}% do Total Perda</div></div>', unsafe_allow_html=True)
+    with m3: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Total Unidades</div><div class="value-kpi">{total_uds}</div><div class="sub-kpi">Unidades Mapeadas</div></div>', unsafe_allow_html=True)
     with m4:
         pf = (fechadas/total_uds*100) if total_uds > 0 else 0
         st.markdown(f'''<div class="card-kpi"><div class="label-kpi">Finalizadas</div><div class="target-container"><div class="target-fill" style="width:{pf}%;"></div><div class="target-line" style="left:{target_pos}%;"></div><div class="target-text">{fechadas}</div></div>
@@ -119,17 +135,15 @@ try:
     
     with g1:
         st.subheader("📊 Resultado Consolidado (1C + Falta)")
-        df_proc = df_filt.copy()
-        df_proc['res_total'] = df_proc['v_1c'] + df_proc['v_falta']
-        df_plot = df_proc.groupby('tipo_clean')['res_total'].sum().reset_index()
-        fig_b = px.bar(df_plot, x='tipo_clean', y=df_plot['res_total'].abs(), text='res_total', color='tipo_clean', 
+        df_proc = df_filt.copy(); df_proc['res_total'] = df_proc['v_1c'] + df_proc['v_falta']
+        df_p = df_proc.groupby('tipo_clean')['res_total'].sum().reset_index()
+        fig_b = px.bar(df_p, x='tipo_clean', y=df_p['res_total'].abs(), text='res_total', color='tipo_clean', 
                        color_discrete_map={'CD':'#3a7bd5','LV':'#7000ff','DQS':'#00f2ff'})
         fig_b.update_traces(texttemplate='R$ %{text:,.0f}', textposition='outside')
         fig_b.update_layout(template="plotly_dark", height=380, showlegend=False, yaxis_visible=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig_b, use_container_width=True)
 
     with g2:
-        # ALTERAÇÃO: Agora exibe apenas o v_1c (Resultado do Ciclo) conforme solicitado
         st.subheader("🏢 Status de Saúde (Apenas 1º Ciclo)")
         df_tree = df_filt[df_filt['v_1c'] != 0].copy()
         df_tree['cd_lbl'] = df_tree['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
