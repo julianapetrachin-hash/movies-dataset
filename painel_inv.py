@@ -25,7 +25,6 @@ st.markdown("""
         min-height: 125px; border-bottom: 4px solid #00d2ff;
     }
     .label-kpi { color: #8b949e; font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
-    /* Tamanho reduzido para 26px para acomodar 6 cards confortavelmente */
     .value-kpi { color: #f0f6fc; font-size: 26px !important; font-weight: 900 !important; margin: 5px 0; letter-spacing: -1px; }
     .sub-kpi { color: #00d2ff; font-size: 12px; font-weight: 500; }
 
@@ -96,18 +95,21 @@ try:
     # CÁLCULOS
     p1c = df_filt['v_1c'].sum()
     vfal = df_filt['v_falta'].sum()
-    vfat_total = df_filt['v_fat'].sum() # Faturamento Total para cálculo de %
+    vfat_total = df_filt['v_fat'].sum()
     perda_total = p1c + vfal
     
     perc_falta = (vfal / perda_total * 100) if perda_total != 0 else 0
     perc_geral_perdas = (perda_total / vfat_total * 100) if vfat_total != 0 else 0
+    
+    # Formatação do percentual para o padrão "-0,039%"
+    perc_geral_str = f"{perc_geral_perdas:.3f}".replace('.', ',') + "%"
     
     total_uds = len(df_filt)
     fechadas = df_filt['is_fin'].sum()
     pendentes = total_uds - fechadas
     target_pos = 70
 
-    # 6 CARDS KPI (Adicionado o Card de % Geral e agrupado Unidades/Finalizadas/Pendentes)
+    # 6 CARDS KPI 
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     
     with c1: 
@@ -115,9 +117,9 @@ try:
     with c2: 
         st.markdown(f'<div class="card-kpi"><div class="label-kpi">Volume Falta</div><div class="value-kpi">R$ {vfal:,.0f}</div><div class="sub-kpi">{abs(perc_falta):.1f}% da Perda</div></div>', unsafe_allow_html=True)
     with c3: 
-        st.markdown(f'<div class="card-kpi"><div class="label-kpi">% Geral de Perdas</div><div class="value-kpi">{perc_geral_perdas:.2f}%</div><div class="sub-kpi">Sobre Faturamento</div></div>', unsafe_allow_html=True)
+        # Aplicado a nova variável "perc_geral_str" aqui
+        st.markdown(f'<div class="card-kpi"><div class="label-kpi">% Geral de Perdas</div><div class="value-kpi">{perc_geral_str}</div><div class="sub-kpi">Sobre Faturamento</div></div>', unsafe_allow_html=True)
     
-    # Grupo de Status: Juntos conforme solicitado
     with c4: 
         st.markdown(f'<div class="card-kpi"><div class="label-kpi">Total Unidades</div><div class="value-kpi">{total_uds}</div><div class="sub-kpi">Base Cadastrada</div></div>', unsafe_allow_html=True)
     with c5:
