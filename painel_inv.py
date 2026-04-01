@@ -58,8 +58,6 @@ def load_data():
     return df
 
 try:
-    df_raw = load_data().copy()
-    try:
     # 1. Carrega os dados atuais
     df_raw = load_data().copy()
 
