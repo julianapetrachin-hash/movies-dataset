@@ -159,6 +159,11 @@ try:
     
     # Estilo unificado: altura fixa de 250px e centralização vertical do conteúdo
     estilo_card = "height: 250px; display: flex; flex-direction: column; justify-content: center; align-items: center;"
+# 4 CARDS KPI 
+    c1, c2, c3, c4 = st.columns(4)
+    
+    # Estilo unificado: altura fixa de 250px e centralização vertical do conteúdo
+    estilo_card = "height: 250px; display: flex; flex-direction: column; justify-content: center; align-items: center;"
 
     with c1: 
         st.markdown(f'''
