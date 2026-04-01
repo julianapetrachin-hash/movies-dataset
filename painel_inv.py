@@ -6,7 +6,7 @@ import re
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(layout="wide", page_title="Magalog | BI Executive", page_icon="📊")
 
-# --- CSS DEFINITIVO (Ajuste de Topo e Filtros) ---
+# --- CSS DEFINITIVO (Título no Topo + Sombras) ---
 st.markdown("""
     <style>
     [data-testid="stHeader"] { display: none; }
@@ -35,6 +35,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# --- FUNÇÕES DE LIMPEZA ---
 def limpar_valor(v):
     if pd.isna(v) or str(v).strip() in ["", "-", "nan"]: return 0.0
     val = str(v).replace('R$', '').replace(' ', '').replace('.', '').replace(',', '.')
@@ -73,6 +74,7 @@ try:
     df_raw['v_falta'] = df_raw[c_fal].apply(limpar_valor) if c_fal else 0.0
     df_raw['is_fin'] = df_raw['v_1c'] != 0
 
+    # SIDEBAR COM FILTROS RESTAURADOS
     with st.sidebar:
         st.header("⚙️ Gerenciamento")
         if st.button("🔄 Atualizar"): st.cache_data.clear(); st.rerun()
@@ -97,6 +99,7 @@ try:
     with m4: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Finalizadas</div><div class="value-kpi" style="color:#00d2ff">{fechadas}</div><div class="sub-kpi">Status Concluído</div></div>', unsafe_allow_html=True)
     with m5: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Pendentes</div><div class="value-kpi" style="color:#ff4b4b">{pendentes}</div><div class="sub-kpi">Em Aberto</div></div>', unsafe_allow_html=True)
 
+    # GRÁFICOS DO MEIO
     g1, g2 = st.columns([1, 1.1])
     with g1:
         st.subheader("📊 Resultado Consolidado")
@@ -110,11 +113,12 @@ try:
         st.markdown('</div>', unsafe_allow_html=True)
 
     with g2:
-        st.subheader("🏢 Status de Saúde (Divisória por CD)")
+        st.subheader("🏢 Status de Saúde (Por CD)")
         st.markdown('<div class="plot-container">', unsafe_allow_html=True)
         df_tree = df_filt[df_filt['v_1c'] != 0].copy()
         df_tree['cd_label'] = df_tree['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
-        # PATH com dois níveis cria a divisória visual
+        
+        # HIERARQUIA PARA CRIAR AS DIVISÓRIAS ENTRE OS CDs
         fig_t = px.treemap(df_tree, path=['tipo_clean', 'cd_label'], values=df_tree['v_1c'].abs(), 
                            color='tipo_clean', color_discrete_map={'CD':'#0040ff','LV':'#aa00ff','DQS':'#00d2ff'})
         fig_t.update_traces(textinfo="label+value", texttemplate="<b>%{label}</b><br>R$ %{value:,.0f}")
@@ -122,23 +126,29 @@ try:
         st.plotly_chart(fig_t, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
+    # TABELA COM PERCENTUAL E FIX DE ERRO
     st.subheader("📋 Detalhamento Operacional")
     df_tab = df_filt.copy()
-    df_tab['%'] = (df_tab['v_1c'] / df_tab['v_fat'] * 100).fillna(0)
+    
+    # Cálculo do percentual por unidade
+    df_tab['%_unid'] = (df_tab['v_1c'] / df_tab['v_fat'] * 100).fillna(0)
     df_tab['cd_t'] = df_tab['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
-    df_ex = df_tab[['semestre', 'tipo_clean', 'divisional', 'cd_t', 'local', 'v_1c', '%', 'v_falta', 'is_fin']]
+    
+    # Seleção final de colunas (Total de 9 colunas agora)
+    df_ex = df_tab[['semestre', 'tipo_clean', 'divisional', 'cd_t', 'local', 'v_1c', '%_unid', 'v_falta', 'is_fin']]
 
+    # FUNÇÃO DINÂMICA: Pinta independente do número de colunas
     def styler(row):
-        color = 'background-color: #451a1a' if row['v_1c'] < 0 else 'background-color: #1a4523'
-        return [color] * len(row)
+        bg = 'background-color: #451a1a;' if row['v_1c'] < 0 else 'background-color: #1a4523;'
+        return [bg] * len(row)
 
     st.dataframe(df_ex.style.apply(styler, axis=1), 
                  column_config={
                      "v_1c": st.column_config.NumberColumn("Resultado", format="R$ %.2f"),
-                     "%": st.column_config.NumberColumn("% Unid", format="%.4f%%"),
+                     "%_unid": st.column_config.NumberColumn("% Unid", format="%.4f%%"),
                      "v_falta": st.column_config.NumberColumn("Falta", format="R$ %.0f")
                  },
                  use_container_width=True, hide_index=True, height=400)
 
 except Exception as e:
-    st.error(f"Erro: {e}")
+    st.error(f"Ocorreu um erro: {e}")
