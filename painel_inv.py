@@ -171,6 +171,12 @@ try:
     # Reduzimos a altura para 200px para ficar mais compacto e tiramos os espaços excessivos
     estilo_card = "height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center;"
 
+    # 4 CARDS KPI 
+    c1, c2, c3, c4 = st.columns(4)
+    
+    # Altura "sob medida" (160px) e padding reduzido (10px) para eliminar a "testa" grande
+    estilo_card = "height: 160px; padding: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;"
+
     with c1: 
         st.markdown(f'''
         <div class="card-kpi" style="{estilo_card}">
@@ -213,13 +219,13 @@ try:
         ).reset_index()
         resumo_tipos['Pen'] = resumo_tipos['Total'] - resumo_tipos['Fim']
 
-        # Reduzimos os paddings (espaços internos) da tabela para ela caber nos 200px
+        # Linhas da tabela bem justas
         linhas_html = ""
         for _, row in resumo_tipos.iterrows():
             linhas_html += f"<tr><td style='text-align:left; color:#8b949e; padding:1px 0;'>{row['tipo_clean']}</td><td style='color:#f0f6fc; text-align:center; padding:1px 0;'>{row['Total']}</td><td style='color:#3fb950; text-align:center; padding:1px 0;'>{row['Fim']}</td><td style='color:#ff4b4b; text-align:center; padding:1px 0;'>{row['Pen']}</td></tr>"
 
-        # Margem superior menor (margin-top:8px) e tamanho de fonte sutilmente ajustado (11px)
-        tabela_html = f"<table style='width:100%; font-size:11px; margin-top:8px; border-top:1px solid #30363d; padding-top:3px; border-collapse: collapse;'><thead><tr style='color:#8b949e; text-transform:uppercase; border-bottom:1px solid #30363d;'><th style='text-align:left; padding-bottom:3px;'>Tipo</th><th style='text-align:center; padding-bottom:3px;'>Tot</th><th style='text-align:center; padding-bottom:3px;'>Fim</th><th style='text-align:center; padding-bottom:3px;'>Pen</th></tr></thead><tbody>{linhas_html}</tbody></table>"
+        # Tabela compacta (font-size: 10.5px e margin-top: 5px)
+        tabela_html = f"<table style='width:100%; font-size:10.5px; margin-top:5px; border-top:1px solid #30363d; padding-top:2px; border-collapse: collapse;'><thead><tr style='color:#8b949e; text-transform:uppercase; border-bottom:1px solid #30363d;'><th style='text-align:left; padding-bottom:2px;'>Tipo</th><th style='text-align:center; padding-bottom:2px;'>Tot</th><th style='text-align:center; padding-bottom:2px;'>Fim</th><th style='text-align:center; padding-bottom:2px;'>Pen</th></tr></thead><tbody>{linhas_html}</tbody></table>"
 
         perc_finalizadas = (fechadas / total_uds * 100) if total_uds > 0 else 0
         
