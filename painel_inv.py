@@ -121,7 +121,12 @@ try:
         st.markdown(f'<div class="card-kpi"><div class="label-kpi">% Geral de Perdas</div><div class="value-kpi">{perc_geral_str}</div><div class="sub-kpi">Sobre Faturamento</div></div>', unsafe_allow_html=True)
     
     with c4: 
-        st.markdown(f'<div class="card-kpi"><div class="label-kpi">Total Unidades</div><div class="value-kpi">{total_uds}</div><div class="sub-kpi">Base Cadastrada</div></div>', unsafe_allow_html=True)
+        # Calcula a porcentagem de finalizadas em relação ao total
+        perc_finalizadas = (fechadas / total_uds * 100) if total_uds > 0 else 0
+        
+        # Adiciona a porcentagem no sub-kpi (ou você pode colocar junto ao {total_uds} se preferir)
+        st.markdown(f'<div class="card-kpi"><div class="label-kpi">Total Unidades</div><div class="value-kpi">{total_uds}</div><div class="sub-kpi">{perc_finalizadas:.1f}% Finalizadas</div></div>', unsafe_allow_html=True)
+        
     with c5:
         pf = (fechadas/total_uds*100) if total_uds > 0 else 0
         st.markdown(f'''<div class="card-kpi"><div class="label-kpi">Finalizadas</div><div class="target-container"><div class="target-fill" style="width:{pf}%;"></div><div class="target-line" style="left:{target_pos}%;"></div><div class="target-text">{fechadas}</div></div>
