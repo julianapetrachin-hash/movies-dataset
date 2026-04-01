@@ -31,12 +31,18 @@ def limpar_valor(valor):
     except: return 0.0
 
 def mapear_divisional(cd_bruto):
+    # Verifica se é nulo, vazio ou a string 'nan'
+    if pd.isna(cd_bruto) or str(cd_bruto).strip() in ["", "nan", "None", "0", "0.0"]:
+        return None  # Retorna None para facilitar o filtro depois
+    
     try:
-        # Força a conversão para string, tira o .0 se existir, e vira int
+        # Limpa o valor para pegar apenas os números do CD
         s_cd = str(cd_bruto).split('.')[0]
         cd = int(re.sub(r'\D', '', s_cd))
-    except: return 'Outros'
+    except:
+        return 'Outros'
     
+    # Lógica de mapeamento existente
     if cd in [590, 300, 50]: return 'Renato Nesello'
     elif cd in [2650, 994, 991, 1100, 1500, 1800, 1250]: return 'Antônio Paiva'
     elif cd in [350, 5200, 2900, 94, 490, 550, 2500,1440]: return 'Christian'
