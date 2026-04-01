@@ -110,60 +110,60 @@ try:
     with k3: st.markdown(f'<div class="card-neon"><div class="label-neon">Volume Falta</div><div class="value-neon">{int(vfal):,}</div><div class="sub-neon">Itens Pendentes</div></div>', unsafe_allow_html=True)
     with k4: st.markdown(f'<div class="card-neon"><div class="label-neon">Evolução</div><div class="value-neon">{concl:.1f}%</div><div class="p-bar-bg"><div class="p-bar-fill" style="width:{concl}%"></div></div></div>', unsafe_allow_html=True)
 
-   # --- SEÇÃO 1: GRÁFICOS DO MEIO (PERDAS VS ESTORNOS + TREEMAP SAÚDE) ---
+   # --- SEÇÃO 1: GRÁFICOS DO MEIO (RESULTADO ACUMULADO + TREEMAP) ---
     st.markdown("<br>", unsafe_allow_html=True)
     
     col_esquerda, col_direita = st.columns([1, 1.1])
 
     with col_esquerda:
-        st.subheader("📊 Perdas vs. Estornos (por Tipo)")
+        st.subheader("📊 Resultado Acumulado por Processo")
         
-        # Agrupamos os dados por Tipo (CD, LV, DQS)
-        df_perda_tipo = df_filt.groupby('tipo_clean')['v_1c'].sum().reset_index()
+        # Agrupamos o resultado por Tipo
+        df_proc = df_filt.groupby('tipo_clean')['v_1c'].sum().reset_index()
         
-        # Criando o gráfico de barras largas estilo o print
+        # Criamos uma coluna auxiliar com valor absoluto para a barra subir
+        df_proc['v_abs'] = df_proc['v_1c'].abs()
+        
+        # Gráfico de Barras com as barras para cima (usando v_abs)
         fig_b = px.bar(
-            df_perda_tipo, 
+            df_proc, 
             x='tipo_clean', 
-            y='v_1c',
+            y='v_abs', # Usar absoluto faz a barra ficar para cima
             color='tipo_clean',
-            text_auto='.2s',
-            # Cores que remetem ao gradiente do seu print
+            text='v_1c', # Mas o texto exibido continua sendo o valor real (negativo)
             color_discrete_map={
-                'CD': '#3a7bd5',   # Azul Médio
-                'LV': '#7000ff',   # Roxo/Magenta
-                'DQS': '#00f2ff'   # Ciano/Verde Água
+                'CD': '#3a7bd5',   
+                'LV': '#7000ff',   
+                'DQS': '#00f2ff'   
             }
         )
         
         fig_b.update_traces(
-            width=0.6, # Deixa as barras mais largas e encorpadas
-            marker_line_width=0,
-            textposition='outside'
+            width=0.5,
+            texttemplate='R$ %{text:,.0f}', # Formata o valor negativo no topo da barra
+            textposition='outside',
+            marker_line_width=0
         )
         
         fig_b.update_layout(
             template="plotly_dark", 
             height=400, 
-            margin=dict(t=20, b=0, l=0, r=0),
+            margin=dict(t=40, b=0, l=0, r=0),
             paper_bgcolor='rgba(0,0,0,0)', 
             plot_bgcolor='rgba(0,0,0,0)',
             showlegend=False,
             xaxis_title="",
-            yaxis_title="Total R$",
-            # Linha de Net (zero) em evidência
-            yaxis=dict(zeroline=True, zerolinewidth=2, zerolinecolor='white')
+            yaxis_visible=False # Remove o eixo Y para limpar o visual como no print
         )
         st.plotly_chart(fig_b, use_container_width=True)
 
     with col_direita:
-        st.subheader("🏢 Status de Saúde Treemap")
+        st.subheader("🏢 Status de Saúde (Tipo > CD)")
         
-        # Filtra dados válidos para o Treemap
         df_tree = df_filt[df_filt['v_1c'] != 0].copy()
         df_tree['cd_label'] = df_tree['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
         
-        # HIERARQUIA: Foco total no Tipo (CD, LV, DQS) conforme o print
+        # HIERARQUIA: Tipo (CD, LV, DQS) -> Código do CD
         fig_t = px.treemap(
             df_tree, 
             path=['tipo_clean', 'cd_label'],
