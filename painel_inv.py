@@ -117,8 +117,13 @@ try:
     with c2: 
         st.markdown(f'<div class="card-kpi"><div class="label-kpi">Falta Volume</div><div class="value-kpi">R$ {vfal:,.0f}</div><div class="sub-kpi">{abs(perc_falta):.1f}% da Perda</div></div>', unsafe_allow_html=True)
     with c3: 
-        # Aplicado a nova variável "perc_geral_str" aqui
-        st.markdown(f'<div class="card-kpi"><div class="label-kpi">% Geral de Perdas</div><div class="value-kpi">{perc_geral_str}</div><div class="sub-kpi">Sobre Faturamento</div></div>', unsafe_allow_html=True)
+        # Mantemos o percentual atual e adicionamos o comparativo financeiro de 2025 no sub-kpi
+        st.markdown(f''' <div class="card-kpi">
+            <div class="label-kpi">% Geral de Perdas</div>
+            <div class="value-kpi">{perc_geral_str}</div>
+            <div class="sub-kpi">vs 2025: -R$ 17.928.616</div>
+        </div>
+        ''', unsafe_allow_html=True)
     
     with c4: 
         # Calcula a porcentagem de finalizadas em relação ao total
