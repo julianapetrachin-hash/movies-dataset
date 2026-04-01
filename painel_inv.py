@@ -6,7 +6,7 @@ import re
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(layout="wide", page_title="Magalog | BI Executive", page_icon="📊")
 
-# --- CSS (Respiro Superior e Estilo Neon do Print) ---
+# --- CSS (Espaçamento superior e Cores do Print) ---
 st.markdown("""
     <style>
     [data-testid="stHeader"] { display: none; }
@@ -28,20 +28,18 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- LIMPEZA DE DADOS SÊNIOR (TRATA #DIV/0, R$, % e TEXTOS) ---
-def universal_clean(v):
+# --- LIMPEZA RADICAL DE DADOS ---
+def force_numeric_clean(v):
+    """Limpa R$, %, hífens e erros de divisão, garantindo retorno float"""
     if pd.isna(v): return 0.0
     s = str(v).strip().upper()
-    if any(err in s for err in ["#DIV/0", "NAN", "NONE", "#VALUE", "-"]): return 0.0
+    if any(x in s for x in ["#DIV", "NAN", "VALUE", "-"]): return 0.0
     
-    # Remove símbolos financeiros e de unidade
+    # Remove tudo que não é número, ponto, vírgula ou sinal de menos
     s = s.replace('R$', '').replace('%', '').replace(' ', '')
-    
-    # Ajuste de separadores: remove ponto de milhar e troca vírgula por ponto decimal
     if ',' in s and '.' in s: s = s.replace('.', '').replace(',', '.')
     elif ',' in s: s = s.replace(',', '.')
     
-    # Mantém apenas números, ponto e o sinal de menos
     s = re.sub(r'[^0-9\.\-]', '', s)
     try:
         return float(s)
@@ -58,32 +56,34 @@ def load_data():
 try:
     df_raw = load_data().copy()
     
-    # Identificação Dinâmica de Colunas (Foco em 1º Ciclo, Falta e Faturamento)
+    # Mapeamento e Limpeza (Garante que a coluna SEJA float antes de qualquer coisa)
     c_1c = next((c for c in df_raw.columns if '1' in c and 'ciclo' in c), None)
     c_fat = next((c for c in df_raw.columns if 'faturamento' in c or 'fat' in c), None)
     c_falta = next((c for c in df_raw.columns if 'falta' in c and 'vol' in c), None)
-    
-    # Limpeza e Conversão forçada para Float
-    df_raw['v_1c'] = df_raw[c_1c].apply(universal_clean).astype(float) if c_1c else 0.0
-    df_raw['v_fat'] = df_raw[c_fat].apply(universal_clean).astype(float) if c_fat else 0.0
-    df_raw['v_falta'] = df_raw[c_falta].apply(universal_clean).astype(float) if c_falta else 0.0
+    c_div = next((c for c in df_raw.columns if 'divisional' in c or 'gerente' in c), None)
+
+    # Convertemos AGORA para float. Se falhar aqui, o erro aparece no log, não no site.
+    df_raw['v_1c'] = df_raw[c_1c].apply(force_numeric_clean).astype(float) if c_1c else 0.0
+    df_raw['v_fat'] = df_raw[c_fat].apply(force_numeric_clean).astype(float) if c_fat else 0.0
+    df_raw['v_falta'] = df_raw[c_falta].apply(force_numeric_clean).astype(float) if c_falta else 0.0
     
     df_raw['tipo_clean'] = df_raw['tipo'].fillna('OUTROS').astype(str).str.upper()
     df_raw['cd_t'] = df_raw['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
+    df_raw['div_clean'] = df_raw[c_div].fillna('OUTROS').astype(str).str.upper() if c_div else 'OUTROS'
     df_raw['is_fin'] = df_raw['v_1c'] != 0
 
-    # --- FILTROS (RESTAURADOS) ---
+    # --- SIDEBAR (FILTROS) ---
     with st.sidebar:
-        st.header("⚙️ Filtros Executivos")
+        st.header("⚙️ Filtros")
         if st.button("🔄 Atualizar Dados"): st.cache_data.clear(); st.rerun()
-        f_tipo = st.multiselect("Filtrar Tipo", options=sorted(df_raw['tipo_clean'].unique()))
-        f_cd = st.multiselect("Filtrar CD", options=sorted(df_raw['cd_t'].unique()))
-        f_ger = st.multiselect("Filtrar Gerente", options=sorted(df_raw['divisional'].unique()) if 'divisional' in df_raw.columns else [])
+        f_tipo = st.multiselect("Tipo", options=sorted(df_raw['tipo_clean'].unique()))
+        f_ger = st.multiselect("Gerente", options=sorted(df_raw['div_clean'].unique()))
+        f_cd = st.multiselect("CD", options=sorted(df_raw['cd_t'].unique()))
 
     df_filt = df_raw.copy()
     if f_tipo: df_filt = df_filt[df_filt['tipo_clean'].isin(f_tipo)]
+    if f_ger: df_filt = df_filt[df_filt['div_clean'].isin(f_ger)]
     if f_cd: df_filt = df_filt[df_filt['cd_t'].isin(f_cd)]
-    if f_ger: df_filt = df_filt[df_filt['divisional'].isin(f_ger)]
 
     # --- DASHBOARD ---
     st.markdown('<div class="header-box"><p class="header-title">PAINEL FECHAMENTO MAGALOG 2026</p></div>', unsafe_allow_html=True)
@@ -107,8 +107,8 @@ try:
     g1, g2 = st.columns([1.2, 1])
     with g1:
         st.markdown("**Perdas por Tipo**")
-        df_g = df_filt.groupby('tipo_clean')[['v_1c', 'v_falta']].sum().sum(axis=1).reset_index(name='t')
-        fig = px.bar(df_g, x='tipo_clean', y=df_g['t'].abs(), color='tipo_clean', 
+        df_g = df_filt.groupby('tipo_clean')[['v_1c', 'v_falta']].sum().sum(axis=1).reset_index(name='total')
+        fig = px.bar(df_g, x='tipo_clean', y=df_g['total'].abs(), color='tipo_clean', 
                      color_discrete_map={'CD':'#3a86ff','LV':'#8338ec','DQS':'#06d6a0'}, text_auto='.2s')
         fig.update_layout(template="plotly_dark", height=350, showlegend=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis_visible=False)
         st.plotly_chart(fig, use_container_width=True)
@@ -121,24 +121,25 @@ try:
         fig_t.update_layout(template="plotly_dark", height=350, margin=dict(t=0,b=0,l=0,r=0))
         st.plotly_chart(fig_t, use_container_width=True)
 
-    # --- TABELA À PROVA DE ERROS (ESTILO PRÉ-CALCULADO) ---
+    # --- TABELA À PROVA DE "LOOP" (A SOLUÇÃO DEFINITIVA) ---
     st.markdown("**Detalhamento Operacional**")
     df_tab = df_filt.copy()
-    df_tab['%'] = (df_tab['v_1c'] / df_tab['v_fat'] * 100).replace([float('inf'), -float('inf')], 0).fillna(0)
+    df_tab['%_u'] = (df_tab['v_1c'] / df_tab['v_fat'] * 100).replace([float('inf'), -float('inf')], 0).fillna(0)
     
-    # GOLPE DE MISERICÓRDIA NO ERRO: Calculamos a cor antes de renderizar
-    # O Styler apenas lê o texto da cor, ele não faz mais nenhuma comparação numérica
-    df_tab['row_color'] = df_tab['v_1c'].apply(lambda x: '#451a1a' if x < 0 else '#1a4523')
+    # CALCULAMOS A COR COMO STRING PURA NA BASE
+    # Isso impede que o Styler tente fazer comparações de números/strings
+    df_tab['color_hex'] = ['#451a1a' if float(x) < 0 else '#1a4523' for x in df_tab['v_1c']]
     
-    df_show = df_tab[['tipo_clean', 'cd_t', 'local', 'v_1c', '%', 'v_falta', 'row_color']].reset_index(drop=True)
+    df_show = df_tab[['tipo_clean', 'cd_t', 'div_clean', 'v_1c', '%_u', 'v_falta', 'color_hex']].reset_index(drop=True)
 
-    def apply_color_blinded(row):
-        return [f"background-color: {row['row_color']}"] * len(row)
+    # O Styler agora apenas "lê" o texto da cor, sem fazer NENHUMA conta lógica
+    def final_style(row):
+        return [f"background-color: {row['color_hex']}"] * len(row)
 
     st.dataframe(
-        df_show.style.apply(apply_color_blinded, axis=1)
-        .format({'v_1c': 'R$ {:,.2f}', 'v_falta': 'R$ {:,.2f}', '%': '{:.4f}%'}),
-        column_config={"row_color": None}, # Esconde a coluna técnica de cores
+        df_show.style.apply(final_style, axis=1)
+        .format({'v_1c': 'R$ {:,.2f}', 'v_falta': 'R$ {:,.2f}', '%_u': '{:.4f}%'}),
+        column_config={"color_hex": None}, # Oculta a coluna de cor
         use_container_width=True, hide_index=True, height=450
     )
 
