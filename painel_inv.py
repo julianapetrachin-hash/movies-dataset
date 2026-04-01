@@ -65,22 +65,29 @@ try:
 
     # Sidebar
     # Sidebar - Filtros com tratamento 'inline' para evitar erro de float vs str
-    st.header("⚙️ Gerenciamento")
-    if st.button("🔄 Atualizar Dados"):
+    # ==========================================
+    # SIDEBAR (FILTROS NA LATERAL)
+    # ==========================================
+    with st.sidebar:
+        st.header("⚙️ Gerenciamento")
+        if st.button("🔄 Atualizar Dados"):
             st.cache_data.clear()
             st.rerun()
-    st.divider()
         
-        # Garante que as colunas de apoio sejam string ANTES do unique/sorted
-    df_raw['tipo_clean'] = df_raw['tipo'].fillna('').astype(str).str.upper().str.strip()
-    df_raw['divisional'] = df_raw['cd'].apply(mapear_divisional).astype(str)
+        st.divider()
         
-        # Filtros blindados contra tipos mistos
-    opcoes_tipo = sorted([str(x) for x in df_raw['tipo_clean'].unique() if x != ''])
-    tipos_sel = st.multiselect("Tipo", options=opcoes_tipo)
+        # Criando as colunas de apoio para os filtros
+        df_raw['tipo_clean'] = df_raw['tipo'].fillna('').astype(str).str.upper().str.strip()
+        df_raw['divisional'] = df_raw['cd'].apply(mapear_divisional).astype(str)
         
-    opcoes_div = sorted([str(x) for x in df_raw['divisional'].unique()])
-    divs_sel = st.multiselect("Divisional", options=opcoes_div)
+        # Filtros (Eles agora ficarão na lateral esquerda)
+        opcoes_tipo = sorted([str(x) for x in df_raw['tipo_clean'].unique() if x != ''])
+        tipos_sel = st.multiselect("Filtrar por Tipo", options=opcoes_tipo)
+        
+        opcoes_div = sorted([str(x) for x in df_raw['divisional'].unique()])
+        divs_sel = st.multiselect("Filtrar por Divisional", options=opcoes_div)
+
+    # A partir daqui, tudo o que não tiver "with st.sidebar" vai para o centro da tela
 
     # Localização Dinâmica de Colunas
     def get_col(name_snippet):
