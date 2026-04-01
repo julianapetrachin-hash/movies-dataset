@@ -59,6 +59,44 @@ def load_data():
 
 try:
     df_raw = load_data().copy()
+    try:
+    # 1. Carrega os dados atuais
+    df_raw = load_data().copy()
+
+    # --- 2. INSERE OS DADOS FIXOS DE 2024 AQUI ---
+    # Usamos os nomes de colunas padronizados para o merge funcionar depois
+    dados_2024 = [
+        {"tipo_clean": "CD", "semestre": "1º semestre", "v_24": -9415271},
+        {"tipo_clean": "CD", "semestre": "2º semestre", "v_24": -5379088},
+        {"tipo_clean": "CROSS", "semestre": "1º semestre", "v_24": -2183},
+        {"tipo_clean": "CROSS", "semestre": "2º semestre", "v_24": -1633},
+        {"tipo_clean": "DQS", "semestre": "1º semestre", "v_24": -269835},
+        {"tipo_clean": "DQS", "semestre": "2º semestre", "v_24": 268613},
+        {"tipo_clean": "LV", "semestre": "1º semestre", "v_24": -619830},
+        {"tipo_clean": "LV", "semestre": "2º semestre", "v_24": -2509390},
+    ]
+    df_2024 = pd.DataFrame(dados_2024)
+
+    # 3. Configuração da Sidebar (Filtros)
+    with st.sidebar:
+        st.header("⚙️ Gerenciamento")
+        if st.button("🔄 Atualizar Dados"):
+            st.cache_data.clear()
+            st.rerun()
+        st.divider()
+        
+        # Criação das colunas de apoio
+        df_raw['tipo_clean'] = df_raw['tipo'].fillna('').astype(str).str.upper().str.strip()
+        df_raw['divisional'] = df_raw['cd'].apply(mapear_divisional).astype(str)
+        
+        # Filtros dinâmicos
+        opcoes_tipo = sorted([str(x) for x in df_raw['tipo_clean'].unique() if x != ''])
+        tipos_sel = st.multiselect("Filtrar por Tipo", options=opcoes_tipo)
+        
+        opcoes_div = sorted([str(x) for x in df_raw['divisional'].unique() if x not in ['None', 'nan']])
+        divs_sel = st.multiselect("Filtrar por Divisional", options=opcoes_div)
+
+    # O RESTANTE DO SEU CÓDIGO (Cálculos, Filtros de df_filt, etc) SEGUE ABAIXO...
 
     with st.sidebar:
         st.header("⚙️ Gerenciamento")
