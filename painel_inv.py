@@ -33,13 +33,18 @@ st.markdown("""
 
 # --- FUNÇÃO DE LIMPEZA ATÔMICA ---
 def limpar_universal(v):
-    if pd.isna(v) or str(v).strip() in ["", "-", "nan", "#DIV/0!", "None"]: return 0.0
+    if pd.isna(v) or str(v).strip() in ["", "-", "nan", "#DIV/0!", "None"]: 
+        return 0.0
     s = str(v).replace('R$', '').replace('%', '').replace(' ', '')
-    if ',' in s and '.' in s: s = s.replace('.', '').replace(',', '.')
-    elif ',' in s: s = s.replace(',', '.')
+    if ',' in s and '.' in s: 
+        s = s.replace('.', '').replace(',', '.')
+    elif ',' in s: 
+        s = s.replace(',', '.')
     s = re.sub(r'[^0-9\.\-]', '', s)
-    try: return float(s)
-    except: return 0.0
+    try: 
+        return float(s)
+    except: 
+        return 0.0
 
 @st.cache_data(ttl=60)
 def load_data():
@@ -56,29 +61,37 @@ try:
     c_falta = next((c for c in df_raw.columns if 'falta' in c and 'vol' in c), None)
     c_fat = next((c for c in df_raw.columns if 'faturamento' in c or 'fat' in c), None)
 
-    # CONVERSÃO FORÇADA ANTES DE QUALQUER LÓGICA
-    df_raw['v_1c'] = pd.to_numeric(df_raw[c_1c].apply(limpar_universal), errors='coerce').fillna(0.0)
-    df_raw['v_falta'] = pd.to_numeric(df_raw[c_falta].apply(limpar_universal), errors='coerce').fillna(0.0)
-    df_raw['v_fat'] = pd.to_numeric(df_raw[c_fat].apply(limpar_universal), errors='coerce').fillna(0.0)
+    # CONVERSÃO FORÇADA PARA FLOAT (Evita o erro de comparação)
+    df_raw['v_1c'] = df_raw[c_1c].apply(limpar_universal).astype(float)
+    df_raw['v_falta'] = df_raw[c_falta].apply(limpar_universal).astype(float)
+    df_raw['v_fat'] = df_raw[c_fat].apply(limpar_universal).astype(float)
     
     df_raw['tipo_clean'] = df_raw['tipo'].fillna('OUTROS').astype(str).str.upper()
-    df_raw['cd_t'] = df_raw['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
+    df_raw['cd_t'] = df_raw['cd'].fillna('N/A').astype(str).str.replace(r'\.0$', '', regex=True)
     df_raw['is_fin'] = df_raw['v_1c'] != 0
 
-    # --- SIDEBAR ---
+    # --- SIDEBAR (Com comando de atualização) ---
     with st.sidebar:
         st.header("⚙️ Filtros")
         if st.button("🔄 Atualizar Dados"):
             st.cache_data.clear()
             st.rerun()
+            
         f_tipo = st.multiselect("Tipo", options=sorted(df_raw['tipo_clean'].unique()))
         f_cd = st.multiselect("CD", options=sorted(df_raw['cd_t'].unique()))
-        f_ger = st.multiselect("Gerente", options=sorted(df_raw['divisional'].unique()) if 'divisional' in df_raw.columns else [])
+        
+        # Garante que a coluna divisional exista e seja tratada como string para o sorted
+        if 'divisional' in df_raw.columns:
+            gerentes = sorted(df_raw['divisional'].dropna().astype(str).unique())
+            f_ger = st.multiselect("Gerente", options=gerentes)
+        else:
+            f_ger = []
 
+    # Aplicação dos Filtros
     df_filt = df_raw.copy()
     if f_tipo: df_filt = df_filt[df_filt['tipo_clean'].isin(f_tipo)]
     if f_cd: df_filt = df_filt[df_filt['cd_t'].isin(f_cd)]
-    if f_ger: df_filt = df_filt[df_filt['divisional'].isin(f_ger)]
+    if f_ger: df_filt = df_filt[df_filt['divisional'].astype(str).isin(f_ger)]
 
     # --- HEADER E KPIs ---
     st.markdown('<div class="header-box"><p class="header-title">PAINEL FECHAMENTO MAGALOG 2026</p></div>', unsafe_allow_html=True)
@@ -93,7 +106,8 @@ try:
     with k3: st.markdown(f'<div class="card-kpi"><p class="label-kpi">Falta Vol</p><p class="value-kpi">R$ {df_filt["v_falta"].sum():,.0f}</p></div>', unsafe_allow_html=True)
     with k4: st.markdown(f'<div class="card-kpi"><p class="label-kpi">% Perdas</p><p class="value-kpi">{perc_p:.3f}%</p></div>', unsafe_allow_html=True)
     with k5: 
-        tu = len(df_filt); fu = df_filt['is_fin'].sum()
+        tu = len(df_filt)
+        fu = int(df_filt['is_fin'].sum())
         st.markdown(f'''<div class="card-kpi"><p class="label-kpi">Status Unidades</p><p class="value-kpi">{tu}</p>
                     <p class="sub-value">Fin: {fu} | Pend: {tu-fu}</p></div>''', unsafe_allow_html=True)
 
@@ -110,25 +124,29 @@ try:
     with g2:
         st.markdown("**Status Treemap**")
         df_tree = df_filt[df_filt['v_1c'] != 0].copy()
-        fig_t = px.treemap(df_tree, path=['tipo_clean', 'cd_t'], values=df_tree['v_1c'].abs(),
-                           color='tipo_clean', color_discrete_map={'CD':'#0040ff','LV':'#aa00ff','DQS':'#00d2ff'})
-        fig_t.update_layout(template="plotly_dark", height=380, margin=dict(t=0,b=0,l=0,r=0))
-        st.plotly_chart(fig_t, use_container_width=True)
+        if not df_tree.empty:
+            fig_t = px.treemap(df_tree, path=['tipo_clean', 'cd_t'], values=df_tree['v_1c'].abs(),
+                               color='tipo_clean', color_discrete_map={'CD':'#0040ff','LV':'#aa00ff','DQS':'#00d2ff'})
+            fig_t.update_layout(template="plotly_dark", height=380, margin=dict(t=0,b=0,l=0,r=0))
+            st.plotly_chart(fig_t, use_container_width=True)
+        else:
+            st.info("Sem dados suficientes para gerar o Treemap.")
 
-    # --- TABELA À PROVA DE COMPARAÇÃO (MÉTODO ESPECIALISTA) ---
+    # --- TABELA DE DETALHAMENTO ---
     st.markdown("**Detalhamento Operacional**")
     df_tab = df_filt.copy()
+    # Cálculo de porcentagem seguro
     df_tab['%_u'] = (df_tab['v_1c'] / df_tab['v_fat'] * 100).replace([float('inf'), -float('inf')], 0).fillna(0)
     
-    # Seleção estrita para exibição
-    df_show = df_tab[['tipo_clean', 'cd_t', 'local', 'v_1c', '%_u', 'v_falta']].reset_index(drop=True)
+    df_show = df_tab[['tipo_clean', 'cd_t', 'local', 'v_1c', '%_u', 'v_falta']].copy()
 
-    # AQUI ESTÁ A CHAVE: Usamos .map (elemento a elemento) e não .apply (coluna/linha)
-    # O subset isola a coluna e o try/except dentro da função impede o erro de tipo
+    # Função de estilo corrigida para evitar conflito float vs str
     def style_val(x):
         try:
             val = float(x)
-            return 'background-color: #451a1a' if val < 0 else 'background-color: #1a4523'
+            if val < 0: return 'background-color: #451a1a; color: white'
+            if val > 0: return 'background-color: #1a4523; color: white'
+            return ''
         except:
             return ''
 
@@ -139,4 +157,5 @@ try:
     )
 
 except Exception as e:
-    st.error(f"Erro Crítico: {e}")
+    st.error(f"Erro Crítico detectado: {e}")
+    st.info("Verifique se os nomes das colunas na planilha mudaram ou se há valores inválidos.")
