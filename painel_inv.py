@@ -110,14 +110,13 @@ try:
     with k3: st.markdown(f'<div class="card-neon"><div class="label-neon">Volume Falta</div><div class="value-neon">{int(vfal):,}</div><div class="sub-neon">Itens Pendentes</div></div>', unsafe_allow_html=True)
     with k4: st.markdown(f'<div class="card-neon"><div class="label-neon">Evolução</div><div class="value-neon">{concl:.1f}%</div><div class="p-bar-bg"><div class="p-bar-fill" style="width:{concl}%"></div></div></div>', unsafe_allow_html=True)
 
-   # --- SEÇÃO DO MEIO: GRÁFICO DE SAÚDE (TREEMAP / BARRAS) ---
+   # --- SEÇÃO 1: GRÁFICO DE SAÚDE POR CD (LARGURA TOTAL) ---
     st.markdown("<br>", unsafe_allow_html=True)
     st.subheader("🏢 Visão Geral de Saúde por CD")
     
     df_tree = df_filt[df_filt['v_1c'] != 0].copy()
     df_tree['cd'] = df_tree['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
     
-    # Gráfico que ocupa a parte superior (conforme o exemplo)
     fig_t = px.treemap(
         df_tree, 
         path=['divisional', 'cd'], 
@@ -133,13 +132,13 @@ try:
     )
     st.plotly_chart(fig_t, use_container_width=True)
 
-    # --- SEÇÃO INFERIOR: TABELA (ESQUERDA) + PIZZA (DIREITA) ---
+    # --- SEÇÃO 2: TABELA (ESQUERDA) + PIZZA (DIREITA) ---
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Criamos duas colunas: uma larga para a tabela e uma estreita para a pizza lateral
-    col_tabela, col_pizza = st.columns([2.5, 1])
+    # Criamos duas colunas: uma larga para a tabela (2.5) e uma estreita para a pizza (1)
+    col_tab, col_graf = st.columns([2.5, 1])
 
-    with col_tabela:
+    with col_tab:
         st.subheader("📋 Detalhamento Operacional")
         df_tab = df_filt.copy()
         df_tab['v_fat'] = pd.to_numeric(df_tab['v_fat'], errors='coerce').fillna(0)
@@ -148,6 +147,7 @@ try:
         df_ex = df_tab[['semestre', 'tipo_clean', 'divisional', 'cd', 'local', 'v_1c', '%', 'v_fal', 'is_fin']]
 
         def styler(row):
+            # Pintura total da linha: Vermelho para perda, Verde para ganho
             bg = 'background-color: #451a1a;' if row['v_1c'] < 0 else 'background-color: #1a4523;'
             return [bg] * len(row)
 
@@ -156,15 +156,16 @@ try:
             column_config={
                 "v_1c": st.column_config.NumberColumn("Resultado", format="R$ %.2f"),
                 "%": st.column_config.NumberColumn("%", format="%.4f%%"),
-                "v_fal": st.column_config.NumberColumn("Falta", format="%.0f")
+                "v_fal": st.column_config.NumberColumn("Falta", format="%.0f"),
+                "is_fin": "Fim?"
             }, 
             use_container_width=True, 
             hide_index=True,
-            height=500 # Aumentei a altura para alinhar com o gráfico lateral
+            height=500 # Altura fixa para alinhar com o gráfico lateral
         )
 
-    with col_pizza:
-        st.subheader("📍 Perda / Gerência")
+    with col_graf:
+        st.subheader("📍 Perda por Gerência")
         df_p = df_filt[df_filt['divisional'] != "Indefinido"]
         
         fig_p = px.pie(
@@ -176,10 +177,13 @@ try:
         )
         fig_p.update_layout(
             template="plotly_dark", 
-            height=500, # Mesma altura da tabela para manter simetria
-            margin=dict(t=50, b=0, l=0, r=0), 
+            height=500, # Mesma altura da tabela
+            margin=dict(t=50, b=50, l=0, r=0), 
             paper_bgcolor='rgba(0,0,0,0)',
             showlegend=True,
             legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
         )
         st.plotly_chart(fig_p, use_container_width=True)
+
+except Exception as e:
+    st.error(f"Erro: {e}")
