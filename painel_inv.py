@@ -134,37 +134,40 @@ try:
             fig_t.update_traces(textinfo="label+value")
             st.plotly_chart(fig_t, use_container_width=True)
 
-    # --- TABELA FINAL ---
+   # --- TABELA FINAL ---
     st.subheader("📋 Detalhamento por Unidade")
     df_tab = df_filt.copy()
     
-    # 1. Cálculo do % de Perda (Tratando divisão por zero e limpando nulos)
+    # 1. Cálculo do % de Perda (Tratando divisão por zero e garantindo que seja numérico)
+    df_tab['v_fat'] = pd.to_numeric(df_tab['v_fat'], errors='coerce').fillna(0)
     df_tab['% Perda'] = (df_tab['v_1c'] / df_tab['v_fat'] * 100).fillna(0)
+    
+    # 2. Limpeza do CD
     df_tab['cd'] = df_tab['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
     
+    # 3. Colunas para exibição
     colunas_show = ['semestre', 'tipo_clean', 'divisional', 'cd', 'local', 'v_1c', '% Perda', 'v_falta', 'is_finalizado']
     df_exibir = df_tab[colunas_show]
 
-    # 4. FUNÇÃO DE ESTILIZAÇÃO (Expandida para Falta Vol)
+    # 4. FUNÇÃO DE ESTILIZAÇÃO (Pintando as 3 colunas de indicadores)
     def style_performance(row):
         styles = [''] * len(row)
         v1c = row['v_1c']
         
-        # Cores de Alerta (Negativo) vs Sucesso (Positivo)
+        # Define as cores baseado no Resultado 1C
         if v1c < 0:
-            bg_color = '#641e1e' # Vermelho saturado
-            text_color = '#ff9999' # Rosa claro
+            bg = 'background-color: #641e1e; color: #ff9999; font-weight: bold;' # Vermelho
         else:
-            bg_color = '#1e4620' # Verde floresta
-            text_color = '#99ff99' # Verde limão
+            bg = 'background-color: #1e4620; color: #99ff99; font-weight: bold;' # Verde
 
-        # Aplicamos o estilo nas colunas financeiras e de performance
-        for col in ['v_1c', '% Perda', 'v_falta']:
-            idx = row.index.get_loc(col)
-            styles[idx] = f'background-color: {bg_color}; color: {text_color}; font-weight: bold;'
+        # Aplica o estilo nas colunas financeiras e de volume
+        for col_name in ['v_1c', '% Perda', 'v_falta']:
+            idx = row.index.get_loc(col_name)
+            styles[idx] = bg
         
         return styles
 
+    # 5. RENDERIZAÇÃO DA TABELA
     st.dataframe(
         df_exibir.style.apply(style_performance, axis=1),
         column_config={
