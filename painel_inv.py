@@ -102,7 +102,7 @@ try:
     perc_geral_perdas = (perda_total / vfat_total * 100) if vfat_total != 0 else 0
     
     # Formatação do percentual para o padrão "-0,039%"
-    perc_geral_str = f"{perc_geral_perdas:.3f}".replace('.', ',') + "%"
+    perc_geral_str = f"{perc_geral_perdas:.4f}".replace('.', ',') + "%"
     
     total_uds = len(df_filt)
     fechadas = df_filt['is_fin'].sum()
