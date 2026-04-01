@@ -151,9 +151,12 @@ try:
     # 6 CARDS KPI 
     c1, c2, c3, c4, c5, c6 = st.columns(6)
     
+   # 4 CARDS KPI (ajustado para 4 colunas iguais, dando mais largura para a tabela)
+    c1, c2, c3, c4 = st.columns(4)
+    
     with c1: 
         st.markdown(f'''
-        <div class="card-kpi">
+        <div class="card-kpi" style="min-height: 190px;">
             <div class="label-kpi">Perda Consolidada</div>
             <div class="value-kpi">R$ {perda_total:,.0f}</div>
             <div class="sub-kpi">{texto_var}</div>
@@ -161,11 +164,11 @@ try:
         ''', unsafe_allow_html=True)
         
     with c2: 
-        st.markdown(f'<div class="card-kpi"><div class="label-kpi">Falta Volume</div><div class="value-kpi">R$ {vfal:,.0f}</div><div class="sub-kpi">{abs(perc_falta):.1f}% da Perda</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="card-kpi" style="min-height: 190px;"><div class="label-kpi">Falta Volume</div><div class="value-kpi">R$ {vfal:,.0f}</div><div class="sub-kpi">{abs(perc_falta):.1f}% da Perda</div></div>', unsafe_allow_html=True)
         
     with c3: 
         st.markdown(f'''
-        <div class="card-kpi">
+        <div class="card-kpi" style="min-height: 190px;">
             <div class="label-kpi">% Geral de Perdas</div>
             <div class="value-kpi">{perc_geral_str}</div>
             <div class="sub-kpi">Sobre Faturamento</div>
@@ -173,27 +176,28 @@ try:
         ''', unsafe_allow_html=True)
         
     with c4: 
-        # Cálculos de resumo por tipo
-        resumo_tipos = df_filt.groupby('tipo_clean').agg(
+        # Cálculos de resumo por tipo (removendo as linhas vazias para não sujar a tabela)
+        df_validos = df_filt[df_filt['tipo_clean'].str.strip() != '']
+        resumo_tipos = df_validos.groupby('tipo_clean').agg(
             Total=('tipo_clean', 'count'),
             Fim=('is_fin', 'sum')
         ).reset_index()
         resumo_tipos['Pen'] = resumo_tipos['Total'] - resumo_tipos['Fim']
 
-        # Construção da mini tabela em HTML (TUDO NA MESMA LINHA PARA EVITAR BUG DO MARKDOWN)
+        # Construção da mini tabela em HTML (com alinhamento centralizado para os números)
         linhas_html = ""
         for _, row in resumo_tipos.iterrows():
-            linhas_html += f"<tr><td style='text-align:left; color:#8b949e; padding:2px;'>{row['tipo_clean']}</td><td style='color:#f0f6fc;'>{row['Total']}</td><td style='color:#3fb950;'>{row['Fim']}</td><td style='color:#ff4b4b;'>{row['Pen']}</td></tr>"
+            linhas_html += f"<tr><td style='text-align:left; color:#8b949e; padding:3px 0;'>{row['tipo_clean']}</td><td style='color:#f0f6fc; text-align:center;'>{row['Total']}</td><td style='color:#3fb950; text-align:center;'>{row['Fim']}</td><td style='color:#ff4b4b; text-align:center;'>{row['Pen']}</td></tr>"
 
-        tabela_html = f"<table style='width:100%; font-size:11px; margin-top:10px; border-top:1px solid #30363d; padding-top:5px;'><thead><tr style='color:#8b949e; text-transform:uppercase;'><th style='text-align:left;'>Tipo</th><th>Tot</th><th>Fim</th><th>Pen</th></tr></thead><tbody>{linhas_html}</tbody></table>"
+        tabela_html = f"<table style='width:100%; font-size:12px; margin-top:10px; border-top:1px solid #30363d; padding-top:5px; border-collapse: collapse;'><thead><tr style='color:#8b949e; text-transform:uppercase; border-bottom:1px solid #30363d;'><th style='text-align:left; padding-bottom:5px;'>Tipo</th><th style='text-align:center; padding-bottom:5px;'>Tot</th><th style='text-align:center; padding-bottom:5px;'>Fim</th><th style='text-align:center; padding-bottom:5px;'>Pen</th></tr></thead><tbody>{linhas_html}</tbody></table>"
 
         perc_finalizadas = (fechadas / total_uds * 100) if total_uds > 0 else 0
         
-        # O HTML final sendo passado sem espaços no começo
-        html_final = f"""<div class="card-kpi" style="min-height: 180px;">
+        # HTML final renderizado na mesma linha para evitar bloqueio do Markdown
+        html_final = f"""<div class="card-kpi" style="min-height: 190px;">
 <div class="label-kpi">Total Unidades</div>
-<div class="value-kpi" style="margin-bottom:0;">{total_uds}</div>
-<div class="sub-kpi">{perc_finalizadas:.1f}% Finalizadas</div>
+<div class="value-kpi" style="margin-bottom:0; padding-bottom:0;">{total_uds}</div>
+<div class="sub-kpi" style="margin-bottom:5px;">{perc_finalizadas:.1f}% Finalizadas</div>
 {tabela_html}
 </div>"""
 
