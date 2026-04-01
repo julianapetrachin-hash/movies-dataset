@@ -106,8 +106,8 @@ try:
 
     k1, k2, k3, k4 = st.columns(4)
     with k1: st.markdown(f'<div class="card-neon"><div class="label-neon">Perda Consolidada</div><div class="value-neon">R$ {p1c+vfal:,.0f}</div><div class="sub-neon">1C + Falta Vol</div></div>', unsafe_allow_html=True)
-    with k2: st.markdown(f'<div class="card-neon"><div class="label-neon">% Perda Global</div><div class="value-neon">{p_glob:.3f}%</div><div class="sub-neon">Sobre Faturamento</div></div>', unsafe_allow_html=True)
-    with k3: st.markdown(f'<div class="card-neon"><div class="label-neon">Volume Falta</div><div class="value-neon">{int(vfal):,}</div><div class="sub-neon">Itens Pendentes</div></div>', unsafe_allow_html=True)
+    with k2: st.markdown(f'<div class="card-neon"><div class="label-neon">% Perda Geral</div><div class="value-neon">{p_glob:.3f}%</div><div class="sub-neon">Sobre Faturamento</div></div>', unsafe_allow_html=True)
+    with k3: st.markdown(f'<div class="card-neon"><div class="label-neon">Falta Volume</div><div class="value-neon">{int(vfal):,}</div><div class="sub-neon">Itens Pendentes</div></div>', unsafe_allow_html=True)
     with k4: st.markdown(f'<div class="card-neon"><div class="label-neon">Evolução</div><div class="value-neon">{concl:.1f}%</div><div class="p-bar-bg"><div class="p-bar-fill" style="width:{concl}%"></div></div></div>', unsafe_allow_html=True)
 # --- SEÇÃO 1: GRÁFICOS DO MEIO (RESULTADO CONSOLIDADO + TREEMAP) ---
     st.markdown("<br>", unsafe_allow_html=True)
@@ -232,7 +232,7 @@ try:
             hide_index=True,
             height="content" # <--- O segredo está aqui: mudei de None para "content"
         )# Automático para não cortar
-            
+
 
     with col_pie_base:
         st.subheader("📍 Perda / Gerência")
