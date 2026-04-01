@@ -249,5 +249,12 @@ try:
             hide_index=True, 
             height="content"
         )
+    with b2:
+        st.subheader("📍 Perda / Gerente")
+        df_pi = df_filt[df_filt['divisional'] != "Indefinido"]
+        fig_pi = px.pie(df_pi, values=df_pi['v_1c'].abs(), names='divisional', hole=0.7, color_discrete_sequence=["#00d2ff", "#008cff", "#0040ff", "#3a7bd5"])
+        fig_pi.update_layout(template="plotly_dark", height=450, margin=dict(t=50, b=50, l=0, r=0), showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
+        st.plotly_chart(fig_pi, use_container_width=True)
+
 except Exception as e:
     st.error(f"⚠️ Erro crítico: {e}")
