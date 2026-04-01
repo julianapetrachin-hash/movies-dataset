@@ -4,9 +4,8 @@ import plotly.graph_objects as go
 from datetime import datetime
 
 # ==========================================
-# 1. CONFIGURAÇÃO DA PÁGINA
+# 1. CONFIGURAÇÃO DA PÁGINA E LOGIN
 # ==========================================
-# st.set_page_config DEVE ser a primeira linha de comando Streamlit
 st.set_page_config(
     layout="wide", 
     page_title="Dashboard Risco Logística", 
@@ -14,46 +13,94 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Inicializa as variáveis de estado para evitar o erro AttributeError
 if "sidebar_state" not in st.session_state:
     st.session_state.sidebar_state = 'collapsed'
 
 def check_password():
+    """Retorna True se o usuário inseriu a senha correta."""
     if "password_correct" not in st.session_state:
         st.markdown("<h2 style='text-align: center;'>🔐 Acesso Restrito - Data Unit</h2>", unsafe_allow_html=True)
-        password = st.text_input("Digite a senha", type="password")
+        password = st.text_input("Digite a senha para acessar o Dashboard", type="password")
         if st.button("Entrar"):
             if password == "LOG2026":
                 st.session_state.password_correct = True
                 st.rerun()
             else:
-                st.error("Senha incorreta.")
+                st.error("Senha incorreta. Tente novamente.")
         return False
     return True
 
+# INÍCIO DO CONTEÚDO PROTEGIDO
 if check_password():
-    # CSS Customizado
-    st.markdown("""
+
+    # --- CSS DE SEGURANÇA E ESTRUTURA ---
+    # --- CSS DE LIMPEZA CIRÚRGICA (NÃO QUEBRA OS FILTROS) ---
+    st.markdown(
+        """
         <style>
-        [data-testid="stStatusWidget"], .stAppDeployButton {display:none !important;}
-        #MainMenu, footer {visibility: hidden;}
+        /* 1. MATA APENAS O GITHUB E O BOTÃO DE DEPLOY */
+        [data-testid="stStatusWidget"] {display:none !important;}
+        .stAppDeployButton {display:none !important;}
+        
+        /* 2. ESCONDE O MENU DE TRÊS PONTINHOS E O RODAPÉ */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+
+        /* 3. DEIXA O HEADER TRANSPARENTE (PARA A SETA FUNCIONAR) */
+        header {
+            background-color: rgba(0,0,0,0) !important;
+            border: none !important;
+        }
+
+        /* 4. AJUSTE DE LARGURA TOTAL */
+        .block-container {
+            max-width: 98% !important;
+            padding-top: 1rem !important;
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
+        }
+
+        /* 5. TÍTULO ESTILIZADO */
         .dashboard-title {
             background: linear-gradient(90deg, #1E3A8A 0%, #1e40af 100%);
-            padding: 12px; border-radius: 8px; color: white;
-            text-align: center; font-weight: bold; font-size: 22px;
-            margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            padding: 12px;
+            border-radius: 8px;
+            color: white;
+            text-align: center;
+            font-weight: bold;
+            font-size: 22px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
+
+        /* 6. CARDS KPIs */
         [data-testid="stMetric"] {
             background-color: #111827 !important;
             border: 1px solid #374151 !important;
             border-radius: 10px !important;
-            padding: 10px !important;
         }
         </style>
         <div class="dashboard-title">INDICADOR DE RISCO LOGÍSTICA - DATA UNIT</div>
-    """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True
+    )
+
+    # --- BOTÃO DE COMANDO DOS FILTROS (FORA DE FUNÇÕES) ---
+    c_menu, _ = st.columns([0.2, 0.8])
+    with c_menu:
+        # Lógica de abrir/fechar usando a variável de estado segura
+        if st.button("⚙️ ABRIR / FECHAR PAINEL"):
+            if st.session_state.sidebar_state == 'collapsed':
+                st.session_state.sidebar_state = 'expanded'
+            else:
+                st.session_state.sidebar_state = 'collapsed'
+            # Atualiza o estado da página nativamente
+            st.set_page_config(initial_sidebar_state=st.session_state.sidebar_state)
+            st.rerun()
 
     # ==========================================
-    # 2. CARREGAMENTO DE DADOS (COM CORREÇÃO DE TIPOS)
+    # 2. CARREGAMENTO DE DADOS
     # ==========================================
     URL_PLANILHA = "https://docs.google.com/spreadsheets/d/1dSYbGC3dFW2TP01ICfWY55P9OiurB0ngLsmrqM5kSYg/export?format=csv&gid=629990986"
 
@@ -62,51 +109,46 @@ if check_password():
         try:
             df = pd.read_csv(URL_PLANILHA)
             df.columns = df.columns.str.strip().str.replace('\n', ' ').str.replace('  ', ' ')
-            
-            # Garante que colunas de identificação sejam STRING para evitar erro de float vs str
-            for c in ['CD', 'TIPO', 'CIDADE']:
-                if c in df.columns:
-                    df[c] = df[c].astype(str).replace('nan', 'Não Informado')
-
             cols_num = ['DVG EM em Milhares', 'REC. TEC. em Milhares', 'GRAU DE RISCO GERAL', 'MALHA EM QNT']
             for col in cols_num:
                 if col in df.columns:
                     df[col] = df[col].astype(str).str.replace('R$', '', regex=False).str.replace('.', '', regex=False).str.replace(',', '.', regex=False).str.strip()
                     df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
-            
             df['DATA'] = pd.to_datetime(df['DATA'], dayfirst=True).dt.date
             return df
         except Exception as e:
-            st.error(f"Erro ao carregar: {e}")
             return pd.DataFrame()
 
     df_raw = load_data()
 
     # ==========================================
-    # 3. SIDEBAR E FILTROS
+    # 3. SIDEBAR (FILTROS)
     # ==========================================
     with st.sidebar:
         st.header("⚙️ Painel de Controle")
         if st.button('🔄 Atualizar Dados'):
             st.cache_data.clear()
             st.rerun()
-        
+        st.divider()
+
         if not df_raw.empty:
+            st.subheader("Filtros de Pesquisa")
             datas_todas = sorted(df_raw['DATA'].unique(), reverse=True)
-            sel_date = st.selectbox("📅 Selecione a Data", options=datas_todas)
+            sel_date = st.selectbox("📅 Selecione a Data", options=datas_todas, index=0)
             
-            tipos_disp = sorted(df_raw['TIPO'].unique())
+            col_tipo, col_cd = 'TIPO', 'CD'
+            tipos_disp = sorted(df_raw[col_tipo].unique()) if col_tipo in df_raw.columns else []
             sel_tipos = st.multiselect("Tipo de Unidade", options=tipos_disp, default=tipos_disp)
             
-            cds_filtrados = df_raw[df_raw['TIPO'].isin(sel_tipos)]['CD'].unique()
+            cds_filtrados = df_raw[df_raw[col_tipo].isin(sel_tipos)][col_cd].unique()
             sel_cds = st.multiselect("Filiais (CDs)", options=sorted(cds_filtrados), default=sorted(cds_filtrados))
         else:
-            st.warning("Base de dados vazia.")
             st.stop()
 
     # ==========================================
-    # 4. DASHBOARD (Lógica de Renderização)
+    # 4. CONTEÚDO VISUAL
     # ==========================================
+    @st.fragment(run_every=600)
     def render_dashboard(df_all, date_val, cds_val):
         datas_todas = sorted(df_all['DATA'].unique(), reverse=True)
         idx = datas_todas.index(date_val)
@@ -118,39 +160,65 @@ if check_password():
         df_at = df_all[(df_all['DATA'] == date_val) & (df_all[col_cd].isin(cds_val))].copy()
         df_ps = df_all[(df_all['DATA'] == date_ant) & (df_all[col_cd].isin(cds_val))].copy()
 
-        # KPIs
         c1, c2, c3, c4 = st.columns([1.5, 1, 1, 1])
+
         with c1:
-            val = df_at[col_risco].mean()
-            fig = go.Figure(go.Indicator(
-                mode="gauge+number", value=val,
-                number={'font': {'color': 'white', 'size': 26}, 'valueformat': '.2f'},
-                gauge={'axis': {'range': [0, 3]}, 'bar': {'color': "#3B82F6"},
-                       'steps': [{'range': [0, 1], 'color': "#22c55e"},
-                                 {'range': [1, 2], 'color': "#eab308"},
-                                 {'range': [2, 3], 'color': "#ef4444"}]}))
-            fig.update_layout(height=150, margin=dict(l=10, r=10, t=20, b=0), paper_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig, use_container_width=True)
+            risco_med_val = df_at[col_risco].mean()
+            fig_gauge = go.Figure(go.Indicator(
+                mode = "gauge+number", value = risco_med_val,
+                number = {'font': {'color': 'white', 'size': 26}, 'valueformat': '.2f'},
+                title = {'text': "Risco Médio", 'font': {'color': '#94A3B8', 'size': 12}},
+                gauge = {
+                    'axis': {'range': [0, 3]}, 'bar': {'color': "#3B82F6"},
+                    'steps': [
+                        {'range': [0, 1], 'color': "#22c55e"}, 
+                        {'range': [1, 2], 'color': "#eab308"}, 
+                        {'range': [2, 3], 'color': "#ef4444"}
+                    ]
+                }
+            ))
+            fig_gauge.update_layout(height=120, margin=dict(l=10, r=10, t=0, b=0), paper_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_gauge, use_container_width=True, config={'displayModeBar': False})
 
         with c2:
             dif = df_at[col_dvg].sum() - df_ps[col_dvg].sum()
-            st.metric("DIF vs Anterior", f"{dif/1000:+.1f}k", delta=f"{dif/1000:.1f}k", delta_color="inverse")
-        with c3:
-            st.metric("Qtd Malha", f"{int(df_at[col_malha].sum()):,}")
-        with c4:
-            st.metric("DVG Atual", f"R$ {df_at[col_dvg].sum()/1000:,.1f}k")
+            st.metric(label="DIF vs Anterior", value=f"{dif/1000:+.1f}k", delta=f"{dif/1000:.1f}k", delta_color="inverse")
 
-        # Gráfico Pareto
+        with c3:
+            st.metric(label="Qtd Malha", value=f"{int(df_at[col_malha].sum()):,}")
+
+        with c4:
+            st.metric(label="DVG Atual", value=f"R$ {df_at[col_dvg].sum()/1000:,.1f}k")
+
+        st.divider()
+
         st.subheader("Concentração de DVG por Unidade")
-        df_p = df_at[df_at[col_dvg] > 0].sort_values(col_dvg, ascending=False)
+        df_p = df_at[df_at[col_dvg] > 0].sort_values(col_dvg, ascending=False).reset_index(drop=True)
         if not df_p.empty:
+            df_p['cum_perc'] = 100 * df_p[col_dvg].cumsum() / df_p[col_dvg].sum()
             fig_p = go.Figure()
-            fig_p.add_trace(go.Bar(x=df_p[col_cd], y=df_p[col_dvg], name="DVG"))
-            fig_p.update_layout(height=350, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)')
+            fig_p.add_trace(go.Bar(x=df_p[col_cd].astype(str), y=df_p[col_dvg], name="DVG", marker_color='#3B82F6'))
+            fig_p.add_trace(go.Scatter(x=df_p[col_cd].astype(str), y=df_p['cum_perc'], name="%", yaxis="y2", line=dict(color="#ef4444", width=3)))
+            fig_p.update_layout(height=380, template="plotly_dark", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis2=dict(overlaying="y", side="right", range=[0, 110]))
             st.plotly_chart(fig_p, use_container_width=True)
 
-        # Tabela
-        st.subheader("📋 Detalhamento")
-        st.dataframe(df_at[[col_cd, 'CIDADE', col_rectec, col_malha, col_dvg, col_risco]], use_container_width=True, hide_index=True)
+        st.subheader("📋 Detalhamento Operacional")
+        df_table = df_at[[col_cd, 'CIDADE', col_rectec, col_malha, col_dvg, col_risco]].copy()
 
+        def style_performance(styler):
+            styler.format({col_dvg: 'R$ {:,.1f}k', col_risco: '{:.2f}', col_malha: '{:,.0f}', col_rectec: 'R$ {:,.0f}k'})
+            styler.background_gradient(cmap='RdYlGn_r', subset=[col_dvg])
+            def color_contrast(val):
+                if isinstance(val, (int, float)):
+                    if val < 1.0: return 'background-color: #22c55e; color: white; font-weight: bold;'
+                    if val < 2.0: return 'background-color: #eab308; color: black; font-weight: bold;'
+                    return 'background-color: #ef4444; color: white; font-weight: bold;'
+                return ''
+            styler.map(color_contrast, subset=[col_risco])
+            styler.set_properties(**{'text-align': 'center', 'border': '1px solid #374151'})
+            return styler
+
+        st.dataframe(style_performance(df_table.style), use_container_width=True, hide_index=True)
+
+    # Chamada final da função
     render_dashboard(df_raw, sel_date, sel_cds)
