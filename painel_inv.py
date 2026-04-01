@@ -6,12 +6,12 @@ import re
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(layout="wide", page_title="Magalog | BI Executive", page_icon="📊")
 
-# --- CSS (Espaçamento Superior e Estilo Magalog) ---
+# --- CSS (Ajuste de Topo e Estilo Magalog) ---
 st.markdown("""
     <style>
     [data-testid="stHeader"] { display: none; }
     .block-container { 
-        padding-top: 2rem !important; 
+        padding-top: 2.5rem !important; 
         margin-top: -10px !important; 
     }
     [data-testid="stAppViewContainer"] { background-color: #0b0e14 !important; }
@@ -39,13 +39,14 @@ st.markdown("""
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/1iaHnigQGOH5w4xFlZXN0cXYSZlLqPuHE1Pdsgy0XSdI/export?format=csv&gid=1358149674"
     df = pd.read_csv(url).dropna(how='all')
-    # Normaliza nomes de colunas
+    # Normaliza nomes de colunas para evitar KeyError
     df.columns = [re.sub(r'[^a-z0-9]', '_', str(c).strip().lower()) for c in df.columns]
     return df
 
 def force_numeric(v):
     """Garante que qualquer valor vire um float puro ou 0.0, removendo lixo de string"""
     if pd.isna(v): return 0.0
+    # Remove R$, espaços e ajusta separadores decimais/milhar
     s = str(v).replace('R$', '').replace(' ', '').replace('.', '').replace(',', '.')
     s = re.sub(r'[^0-9\.\-]', '', s)
     try:
@@ -56,7 +57,7 @@ def force_numeric(v):
 try:
     df_raw = load_data().copy()
     
-    # Mapeamento Dinâmico de Colunas para evitar KeyError
+    # Mapeamento Dinâmico de Colunas
     c_1c = next((c for c in df_raw.columns if '1' in c and 'ciclo' in c), None)
     c_falta = next((c for c in df_raw.columns if 'falta' in c and 'vol' in c), None)
     c_fat = next((c for c in df_raw.columns if 'faturamento' in c or 'fat' in c), None)
@@ -74,18 +75,22 @@ try:
     df_raw['div_clean'] = df_raw[c_div].fillna('OUTROS').astype(str).str.upper() if c_div else 'OUTROS'
     df_raw['is_fin'] = df_raw['v_1c'] != 0
 
-    # --- SIDEBAR (FILTROS) ---
+    # --- SIDEBAR (FILTROS REATIVADOS) ---
     with st.sidebar:
         st.header("⚙️ Painel de Controle")
         if st.button("🔄 Atualizar Dados"):
             st.cache_data.clear()
             st.rerun()
         
-        f_tipo = st.multiselect("Filtrar Tipo", options=sorted(df_raw['tipo_clean'].unique()))
-        f_ger = st.multiselect("Filtrar Gerente", options=sorted(df_raw['div_clean'].unique()))
-        f_cd = st.multiselect("Filtrar CD", options=sorted(df_raw['cd_t'].unique()))
+        f_ano = st.multiselect("Ano", options=sorted(df_raw['ano'].unique()) if 'ano' in df_raw.columns else [])
+        f_sem = st.multiselect("Semestre", options=sorted(df_raw['semestre'].unique()) if 'semestre' in df_raw.columns else [])
+        f_tipo = st.multiselect("Tipo", options=sorted(df_raw['tipo_clean'].unique()))
+        f_ger = st.multiselect("Gerente", options=sorted(df_raw['div_clean'].unique()))
+        f_cd = st.multiselect("CD", options=sorted(df_raw['cd_t'].unique()))
 
     df_filt = df_raw.copy()
+    if f_ano: df_filt = df_filt[df_filt['ano'].isin(f_ano)]
+    if f_sem: df_filt = df_filt[df_filt['semestre'].isin(f_sem)]
     if f_tipo: df_filt = df_filt[df_filt['tipo_clean'].isin(f_tipo)]
     if f_ger: df_filt = df_filt[df_filt['div_clean'].isin(f_ger)]
     if f_cd: df_filt = df_filt[df_filt['cd_t'].isin(f_cd)]
@@ -136,7 +141,7 @@ try:
     df_tab = df_filt.copy()
     df_tab['perc_u'] = (df_tab['v_1c'] / df_tab['v_fat'] * 100).replace([float('inf'), float('-inf')], 0).fillna(0)
     
-    # Seleção de colunas e Reset de Índice
+    # Seleção de colunas e Reset de Índice para evitar erros de renderização
     df_show = df_tab[['tipo_clean', 'cd_t', 'div_clean', 'v_1c', 'perc_u', 'v_falta', 'is_fin']].reset_index(drop=True)
     
     def style_final(row):
