@@ -6,7 +6,7 @@ import re
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(layout="wide", page_title="Magalog | BI Executive", page_icon="📊")
 
-# --- ESTILIZAÇÃO CSS (Big Numbers + 5 Cards) ---
+# --- ESTILIZAÇÃO CSS (Big Numbers + 6 Cards) ---
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] { background-color: #0d1117 !important; }
@@ -25,7 +25,8 @@ st.markdown("""
         min-height: 125px; border-bottom: 4px solid #00d2ff;
     }
     .label-kpi { color: #8b949e; font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
-    .value-kpi { color: #f0f6fc; font-size: 32px !important; font-weight: 900 !important; margin: 5px 0; letter-spacing: -1px; }
+    /* Tamanho reduzido para 26px para acomodar 6 cards confortavelmente */
+    .value-kpi { color: #f0f6fc; font-size: 26px !important; font-weight: 900 !important; margin: 5px 0; letter-spacing: -1px; }
     .sub-kpi { color: #00d2ff; font-size: 12px; font-weight: 500; }
 
     .target-container {
@@ -93,22 +94,37 @@ try:
     st.markdown('<div class="header-box"><p class="header-title">BI FECHAMENTO MAGALOG 2026</p></div>', unsafe_allow_html=True)
 
     # CÁLCULOS
-    p1c = df_filt['v_1c'].sum(); vfal = df_filt['v_falta'].sum()
+    p1c = df_filt['v_1c'].sum()
+    vfal = df_filt['v_falta'].sum()
+    vfat_total = df_filt['v_fat'].sum() # Faturamento Total para cálculo de %
     perda_total = p1c + vfal
+    
     perc_falta = (vfal / perda_total * 100) if perda_total != 0 else 0
-    total_uds = len(df_filt); fechadas = df_filt['is_fin'].sum(); pendentes = total_uds - fechadas
+    perc_geral_perdas = (perda_total / vfat_total * 100) if vfat_total != 0 else 0
+    
+    total_uds = len(df_filt)
+    fechadas = df_filt['is_fin'].sum()
+    pendentes = total_uds - fechadas
     target_pos = 70
 
-    # 5 CARDS KPI
-    m1, m2, m3, m4, m5 = st.columns(5)
-    with m1: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Perda Consolidada</div><div class="value-kpi">R$ {perda_total:,.0f}</div><div class="sub-kpi">1C + Falta Vol</div></div>', unsafe_allow_html=True)
-    with m2: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Volume Falta</div><div class="value-kpi">R$ {vfal:,.0f}</div><div class="sub-kpi">{abs(perc_falta):.1f}% do Total</div></div>', unsafe_allow_html=True)
-    with m3: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Total Unidades</div><div class="value-kpi">{total_uds}</div><div class="sub-kpi">Base Cadastrada</div></div>', unsafe_allow_html=True)
-    with m4:
+    # 6 CARDS KPI (Adicionado o Card de % Geral e agrupado Unidades/Finalizadas/Pendentes)
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    
+    with c1: 
+        st.markdown(f'<div class="card-kpi"><div class="label-kpi">Perda Consolidada</div><div class="value-kpi">R$ {perda_total:,.0f}</div><div class="sub-kpi">1C + Falta Vol</div></div>', unsafe_allow_html=True)
+    with c2: 
+        st.markdown(f'<div class="card-kpi"><div class="label-kpi">Volume Falta</div><div class="value-kpi">R$ {vfal:,.0f}</div><div class="sub-kpi">{abs(perc_falta):.1f}% da Perda</div></div>', unsafe_allow_html=True)
+    with c3: 
+        st.markdown(f'<div class="card-kpi"><div class="label-kpi">% Geral de Perdas</div><div class="value-kpi">{perc_geral_perdas:.2f}%</div><div class="sub-kpi">Sobre Faturamento</div></div>', unsafe_allow_html=True)
+    
+    # Grupo de Status: Juntos conforme solicitado
+    with c4: 
+        st.markdown(f'<div class="card-kpi"><div class="label-kpi">Total Unidades</div><div class="value-kpi">{total_uds}</div><div class="sub-kpi">Base Cadastrada</div></div>', unsafe_allow_html=True)
+    with c5:
         pf = (fechadas/total_uds*100) if total_uds > 0 else 0
         st.markdown(f'''<div class="card-kpi"><div class="label-kpi">Finalizadas</div><div class="target-container"><div class="target-fill" style="width:{pf}%;"></div><div class="target-line" style="left:{target_pos}%;"></div><div class="target-text">{fechadas}</div></div>
         <div style="display:flex;justify-content:space-between;"><span class="target-label">0</span><span class="target-label">target</span><span class="target-label">{total_uds}</span></div></div>''', unsafe_allow_html=True)
-    with m5:
+    with c6:
         pp = (pendentes/total_uds*100) if total_uds > 0 else 0
         st.markdown(f'''<div class="card-kpi"><div class="label-kpi">Pendentes</div><div class="target-container" style="background:#2a1b1b;"><div class="target-fill" style="width:{pp}%;background:#ff4b4b;"></div><div class="target-line" style="left:{target_pos}%;background:#ff4b4b;"></div><div class="target-text">{pendentes}</div></div>
         <div style="display:flex;justify-content:space-between;"><span class="target-label">0</span><span class="target-label">target</span><span class="target-label">{total_uds}</span></div></div>''', unsafe_allow_html=True)
@@ -129,7 +145,6 @@ try:
         st.plotly_chart(fig_b, use_container_width=True)
 
     with g2:
-        # ALTERAÇÃO: Agora exibe apenas o v_1c (Resultado do Ciclo) conforme solicitado
         st.subheader("🏢 Status de Saúde (Apenas 1º Ciclo)")
         df_tree = df_filt[df_filt['v_1c'] != 0].copy()
         df_tree['cd_lbl'] = df_tree['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
