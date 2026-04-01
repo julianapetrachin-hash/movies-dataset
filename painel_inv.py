@@ -189,6 +189,12 @@ try:
     # Altura corrigida para 195px para caber a tabela inteira dentro da borda
     estilo_card = "height: 195px; padding: 15px 10px; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; box-sizing: border-box;"
 
+   # 5 CARDS KPI (Separando a tabela em um card próprio)
+    c1, c2, c3, c4, c5 = st.columns(5)
+    
+    # Altura elegante de 150px e conteúdo perfeitamente centralizado no meio!
+    estilo_card = "height: 150px; padding: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;"
+
     with c1: 
         st.markdown(f'''
         <div class="card-kpi" style="{estilo_card}">
@@ -223,6 +229,20 @@ try:
         ''', unsafe_allow_html=True)
         
     with c4: 
+        # Card 4 agora fica focado apenas no total (limpo e direto)
+        perc_finalizadas = (fechadas / total_uds * 100) if total_uds > 0 else 0
+        st.markdown(f'''
+        <div class="card-kpi" style="{estilo_card}">
+            <div style="width: 100%;">
+                <div class="label-kpi">Total Unidades</div>
+                <div class="value-kpi">{total_uds}</div>
+                <div class="sub-kpi">{perc_finalizadas:.1f}% Finalizadas</div>
+            </div>
+        </div>
+        ''', unsafe_allow_html=True)
+
+    with c5: 
+        # Card 5 exclusivo para a tabela
         df_validos = df_filt[df_filt['tipo_clean'].str.strip() != '']
         resumo_tipos = df_validos.groupby('tipo_clean').agg(
             Total=('tipo_clean', 'count'),
@@ -230,30 +250,21 @@ try:
         ).reset_index()
         resumo_tipos['Pen'] = resumo_tipos['Total'] - resumo_tipos['Fim']
 
+        # Demos um respiro maior no padding da tabela já que ela tem seu próprio espaço agora
         linhas_html = ""
         for _, row in resumo_tipos.iterrows():
-            linhas_html += f"<tr><td style='text-align:left; color:#8b949e; padding:1px 0;'>{row['tipo_clean']}</td><td style='color:#f0f6fc; text-align:center; padding:1px 0;'>{row['Total']}</td><td style='color:#3fb950; text-align:center; padding:1px 0;'>{row['Fim']}</td><td style='color:#ff4b4b; text-align:center; padding:1px 0;'>{row['Pen']}</td></tr>"
+            linhas_html += f"<tr><td style='text-align:left; color:#8b949e; padding:2px 0;'>{row['tipo_clean']}</td><td style='color:#f0f6fc; text-align:center; padding:2px 0;'>{row['Total']}</td><td style='color:#3fb950; text-align:center; padding:2px 0;'>{row['Fim']}</td><td style='color:#ff4b4b; text-align:center; padding:2px 0;'>{row['Pen']}</td></tr>"
 
-        tabela_html = f"<table style='width:100%; font-size:10.5px; margin-top:5px; border-top:1px solid #30363d; padding-top:2px; border-collapse: collapse;'><thead><tr style='color:#8b949e; text-transform:uppercase; border-bottom:1px solid #30363d;'><th style='text-align:left; padding-bottom:2px;'>Tipo</th><th style='text-align:center; padding-bottom:2px;'>Tot</th><th style='text-align:center; padding-bottom:2px;'>Fim</th><th style='text-align:center; padding-bottom:2px;'>Pen</th></tr></thead><tbody>{linhas_html}</tbody></table>"
-
-        perc_finalizadas = (fechadas / total_uds * 100) if total_uds > 0 else 0
+        tabela_html = f"<table style='width:100%; font-size:11px; margin-top:0px; border-top:1px solid #30363d; padding-top:4px; border-collapse: collapse;'><thead><tr style='color:#8b949e; text-transform:uppercase; border-bottom:1px solid #30363d;'><th style='text-align:left; padding-bottom:4px;'>Tipo</th><th style='text-align:center; padding-bottom:4px;'>Tot</th><th style='text-align:center; padding-bottom:4px;'>Fim</th><th style='text-align:center; padding-bottom:4px;'>Pen</th></tr></thead><tbody>{linhas_html}</tbody></table>"
         
         html_final = f"""<div class="card-kpi" style="{estilo_card}">
             <div style="width: 100%;">
-                <div class="label-kpi" style="margin-bottom:0px;">Total Unidades</div>
-                <div class="value-kpi" style="margin: 0; padding:0;">{total_uds}</div>
-                <div class="sub-kpi" style="margin-bottom:0px;">{perc_finalizadas:.1f}% Finalizadas</div>
+                <div class="label-kpi" style="margin-bottom:8px;">Status por Tipo</div>
                 {tabela_html}
             </div>
         </div>"""
 
         st.markdown(html_final, unsafe_allow_html=True)
-        
-  ##  with c5:
-    ##      pf = (fechadas/total_uds*100) if total_uds > 0 else 0
- ## st.markdown(f'''<div class="card-kpi" style="min-height: 180px;"><div class="label-kpi">Finalizadas</div><div class="target-container"><div class="target-fill" style="width:{pf}%;"></div><div class="target-line" style="left:{target_pos}%;"></div><div class="target-text">{fechadas}</div></div>
-       ##   <div style="display:flex;justify-content:space-between;"><span class="target-label">0</span><span class="target-label">target</span><span class="target-label">{total_uds}</span></div></div>''', unsafe_allow_html=True)
-        
     ##  with c6:
        ##   pp = (pendentes/total_uds*100) if total_uds > 0 else 0
         ##  st.markdown(f'''<div class="card-kpi" style="min-height: 180px;"><div class="label-kpi">Pendentes</div><div class="target-container" style="background:#2a1b1b;"><div class="target-fill" style="width:{pp}%;background:#ff4b4b;"></div><div class="target-line" style="left:{target_pos}%;background:#ff4b4b;"></div><div class="target-text">{pendentes}</div></div>
