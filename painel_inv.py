@@ -3,17 +3,16 @@ import pandas as pd
 import plotly.express as px
 import re
 
-# 1. CONFIGURAÇÃO DA PÁGINA
+# 1. CONFIGURAÇÃO DA PÁGINA (TOPO ABSOLUTO)
 st.set_page_config(layout="wide", page_title="Magalog | BI Executive", page_icon="📊")
 
-# --- CSS SENIOR (TOPO ABSOLUTO E REMOÇÃO DE ESPAÇOS NATIVOS) ---
+# --- CSS SENIOR ---
 st.markdown("""
     <style>
     [data-testid="stHeader"] { display: none; }
     .block-container { 
         padding-top: 0rem !important; 
-        padding-bottom: 0rem !important;
-        margin-top: -35px !important; 
+        margin-top: -40px !important; 
     }
     [data-testid="stAppViewContainer"] { background-color: #0d1117 !important; }
     
@@ -77,10 +76,12 @@ try:
     df_raw['v_falta'] = df_raw[c_fal].apply(limpar_valor) if c_fal else 0.0
     df_raw['is_fin'] = df_raw['v_1c'] != 0
 
-    # --- SIDEBAR ---
+    # --- SIDEBAR (FILTROS) ---
     with st.sidebar:
-        st.header("⚙️ Filtros Operacionais")
-        if st.button("🔄 Limpar Cache"): st.cache_data.clear(); st.rerun()
+        st.header("⚙️ Gerenciamento")
+        if st.button("🔄 Atualizar Dados"): 
+            st.cache_data.clear()
+            st.rerun()
         t_sel = st.multiselect("Tipo", options=sorted(df_raw['tipo_clean'].unique()))
         d_sel = st.multiselect("Gerente", options=sorted(df_raw['divisional'].unique()))
 
@@ -91,7 +92,7 @@ try:
     # --- BANNER ---
     st.markdown('<div class="header-box"><p class="header-title">BI FECHAMENTO MAGALOG 2026</p></div>', unsafe_allow_html=True)
 
-    # KPIS
+    # --- KPIS ---
     p1c = df_filt['v_1c'].sum(); vfal = df_filt['v_falta'].sum()
     perda_total = p1c + vfal
     total_un = len(df_filt); fechadas = df_filt['is_fin'].sum(); pendentes = total_un - fechadas
@@ -103,7 +104,7 @@ try:
     with k4: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Finalizadas</div><div class="value-kpi" style="color:#00d2ff">{fechadas}</div></div>', unsafe_allow_html=True)
     with k5: st.markdown(f'<div class="card-kpi"><div class="label-kpi">Pendentes</div><div class="value-kpi" style="color:#ff4b4b">{pendentes}</div></div>', unsafe_allow_html=True)
 
-    # --- LINHA 1 DE GRÁFICOS ---
+    # --- LINHA 1 ---
     g1, g2 = st.columns([1, 1.2])
     with g1:
         st.subheader("📊 Resultado por Tipo")
@@ -117,11 +118,12 @@ try:
         st.markdown('</div>', unsafe_allow_html=True)
 
     with g2:
-        st.subheader("🏢 Status de Saúde (Divisão por CD)")
+        st.subheader("🏢 Status de Saúde (Por CD)")
         st.markdown('<div class="plot-container">', unsafe_allow_html=True)
         df_tree = df_filt[df_filt['v_1c'] != 0].copy()
         df_tree['cd_id'] = df_tree['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
-        # HIERARQUIA: px.Constant garante a separação visual dos blocos
+        
+        # HIERARQUIA HIERÁRQUICA: px.Constant garante a separação visual total
         fig_t = px.treemap(df_tree, path=[px.Constant("Rede"), 'tipo_clean', 'cd_id'], 
                            values=df_tree['v_1c'].abs(), color='tipo_clean',
                            color_discrete_map={'CD':'#0040ff','LV':'#aa00ff','DQS':'#00d2ff'})
@@ -133,19 +135,19 @@ try:
     # --- LINHA 2: TABELA + PIZZA ---
     b1, b2 = st.columns([2.5, 1.2])
     with b1:
-        st.subheader("📋 Detalhamento das Unidades")
+        st.subheader("📋 Detalhamento")
         df_tab = df_filt.copy()
         df_tab['%_unid'] = (df_tab['v_1c'] / df_tab['v_fat'] * 100).fillna(0)
         df_tab['cd_str'] = df_tab['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
         
-        # RESET INDEX é fundamental para não confundir o Styler
-        df_ex = df_tab[['semestre', 'tipo_clean', 'divisional', 'cd_str', 'local', 'v_1c', '%_unid', 'v_falta', 'is_fin']].reset_index(drop=True)
+        # Reset Index isolado para matar o erro de length
+        df_ex = df_tab[['semestre', 'tipo_clean', 'divisional', 'cd_str', 'local', 'v_1c', '%_unid', 'v_falta', 'is_fin']].reset_index(drop=True).copy()
 
         def style_v1c(val):
             bg = '#451a1a' if val < 0 else '#1a4523'
             return f'background-color: {bg}'
 
-        # USO DO MAP COM SUBSET: Técnica Senior para evitar erro de length
+        # Renderização blindada
         st.dataframe(
             df_ex.style.map(style_v1c, subset=['v_1c']), 
             column_config={
@@ -166,7 +168,7 @@ try:
                                 paper_bgcolor='rgba(0,0,0,0)', legend=dict(orientation="h", y=-0.1))
             st.plotly_chart(fig_pi, use_container_width=True)
         else:
-            st.info("Ajuste os filtros para ver o gráfico.")
+            st.info("Sem dados.")
 
 except Exception as e:
     st.error(f"Erro Crítico: {e}")
