@@ -90,7 +90,7 @@ try:
     if d_sel: df_filt = df_filt[df_filt['divisional'].isin(d_sel)]
 
     # --- UI PRINCIPAL ---
-    st.markdown('<div class="header-box"><p class="header-title">BI FECHAMENTO MAGALOG 2026</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="header-box"><p class="header-title">BI FECHAMENTO INV PREVENÇAO DE PERDAS 2026</p></div>', unsafe_allow_html=True)
 
     # CÁLCULOS
     p1c = df_filt['v_1c'].sum()
