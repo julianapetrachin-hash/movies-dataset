@@ -6,147 +6,156 @@ import re
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(layout="wide", page_title="Magalog | BI Executive", page_icon="📊")
 
-# --- CSS EXECUTIVO ---
+# --- CSS (Ajuste de Topo e Estilo Executivo) ---
 st.markdown("""
     <style>
     [data-testid="stHeader"] { display: none; }
     .block-container { padding-top: 1.5rem !important; margin-top: -30px !important; }
     [data-testid="stAppViewContainer"] { background-color: #0b0e14 !important; }
-    [data-testid="stSidebar"] { background-color: #161b22 !important; }
     
     .header-box {
         background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
-        padding: 15px; border-radius: 8px; text-align: center;
-        margin-bottom: 20px; border-bottom: 4px solid #00d2ff;
+        padding: 12px; border-radius: 5px; text-align: center;
+        margin-bottom: 20px; border-bottom: 3px solid #00d2ff;
     }
-    .header-title { color: white !important; font-size: 26px !important; font-weight: 800 !important; margin: 0; }
-    
+    .header-title { color: white !important; font-size: 26px !important; font-weight: 800 !important; letter-spacing: 2px; }
+
     .card-kpi {
         background: #1c222d; border: 1px solid #313d4f; border-radius: 10px;
-        padding: 20px; text-align: center; border-top: 4px solid #00d2ff;
+        padding: 15px; text-align: center; border-top: 3px solid #00d2ff;
+        min-height: 110px;
     }
-    .value-kpi { color: white; font-size: 24px; font-weight: 900; margin: 5px 0; }
-    .label-kpi { color: #8b949e; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+    .value-kpi { color: white; font-size: 22px; font-weight: 900; margin: 0; }
+    .label-kpi { color: #8b949e; font-size: 11px; text-transform: uppercase; margin-bottom: 5px; }
+    .sub-value { color: #00d2ff; font-size: 12px; font-weight: 700; margin-top: 5px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNÇÃO DE LIMPEZA À PROVA DE ERROS ---
-def limpar_valor(v):
-    try:
-        if pd.isna(v) or str(v).strip() in ["", "-", "nan", "#DIV/0!", "None"]: 
-            return 0.0
-        s = str(v).replace('R$', '').replace('%', '').replace(' ', '')
-        # Trata formato brasileiro (1.000,00) vs americano (1,000.00)
-        if ',' in s and '.' in s: s = s.replace('.', '').replace(',', '.')
-        elif ',' in s: s = s.replace(',', '.')
-        s = re.sub(r'[^0-9\.\-]', '', s)
+# --- FUNÇÃO DE LIMPEZA ATÔMICA ---
+def limpar_universal(v):
+    if pd.isna(v) or str(v).strip() in ["", "-", "nan", "#DIV/0!", "None"]: 
+        return 0.0
+    s = str(v).replace('R$', '').replace('%', '').replace(' ', '')
+    if ',' in s and '.' in s: 
+        s = s.replace('.', '').replace(',', '.')
+    elif ',' in s: 
+        s = s.replace(',', '.')
+    s = re.sub(r'[^0-9\.\-]', '', s)
+    try: 
         return float(s)
-    except:
+    except: 
         return 0.0
 
 @st.cache_data(ttl=60)
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/1iaHnigQGOH5w4xFlZXN0cXYSZlLqPuHE1Pdsgy0XSdI/export?format=csv&gid=1358149674"
-    return pd.read_csv(url).dropna(how='all')
+    df = pd.read_csv(url).dropna(how='all')
+    df.columns = [re.sub(r'[^a-zA-Z0-9]', '_', str(c).strip().lower()) for c in df.columns]
+    return df
 
 try:
     df_raw = load_data().copy()
     
-    # --- MAPEAMENTO INTELIGENTE DE COLUNAS ---
-    # Buscamos as colunas por palavras-chave para evitar erro de renomeação
-    def encontrar_coluna(termos):
-        for col in df_raw.columns:
-            if any(t.lower() in str(col).lower() for t in termos):
-                return col
-        return df_raw.columns[0] # Fallback para a primeira coluna
+    # Identificação Dinâmica de Colunas
+    c_1c = next((c for c in df_raw.columns if '1' in c and 'ciclo' in c), None)
+    c_falta = next((c for c in df_raw.columns if 'falta' in c and 'vol' in c), None)
+    c_fat = next((c for c in df_raw.columns if 'faturamento' in c or 'fat' in c), None)
 
-    c_1c = encontrar_coluna(['1', 'ciclo'])
-    c_falta = encontrar_coluna(['falta', 'vol'])
-    c_fat = encontrar_coluna(['faturamento', 'fat'])
-    c_tipo = encontrar_coluna(['tipo'])
-    c_cd = encontrar_coluna(['cd'])
-    c_gerente = encontrar_coluna(['divisional', 'gerente', 'regional'])
-
-    # --- PROCESSAMENTO SEGURO ---
-    # Convertemos tudo para os tipos corretos IMEDIATAMENTE
-    df_raw['v_1c'] = df_raw[c_1c].apply(limpar_valor)
-    df_raw['v_falta'] = df_raw[c_falta].apply(limpar_valor)
-    df_raw['v_fat'] = df_raw[c_fat].apply(limpar_valor)
-    df_raw['total_perda'] = df_raw['v_1c'] + df_raw['v_falta']
+    # CONVERSÃO FORÇADA PARA FLOAT (Evita o erro de comparação)
+    df_raw['v_1c'] = df_raw[c_1c].apply(limpar_universal).astype(float)
+    df_raw['v_falta'] = df_raw[c_falta].apply(limpar_universal).astype(float)
+    df_raw['v_fat'] = df_raw[c_fat].apply(limpar_universal).astype(float)
     
-    # Strings para filtros (sempre string, nunca float)
-    df_raw['f_tipo'] = df_raw[c_tipo].fillna("OUTROS").astype(str).str.upper()
-    df_raw['f_cd'] = df_raw[c_cd].fillna("N/A").astype(str).str.replace(".0", "", regex=False)
-    df_raw['f_gerente'] = df_raw[c_gerente].fillna("N/A").astype(str).str.upper()
+    df_raw['tipo_clean'] = df_raw['tipo'].fillna('OUTROS').astype(str).str.upper()
+    df_raw['cd_t'] = df_raw['cd'].fillna('N/A').astype(str).str.replace(r'\.0$', '', regex=True)
+    df_raw['is_fin'] = df_raw['v_1c'] != 0
 
-    # --- SIDEBAR (FILTROS) ---
+    # --- SIDEBAR (Com comando de atualização) ---
     with st.sidebar:
-        st.header("⚙️ Painel de Controle")
-        if st.button("🔄 Sincronizar Google Sheets"):
+        st.header("⚙️ Filtros")
+        if st.button("🔄 Atualizar Dados"):
             st.cache_data.clear()
             st.rerun()
+            
+        f_tipo = st.multiselect("Tipo", options=sorted(df_raw['tipo_clean'].unique()))
+        f_cd = st.multiselect("CD", options=sorted(df_raw['cd_t'].unique()))
         
-        st.divider()
-        sel_tipo = st.multiselect("Filtrar Tipo:", options=sorted(df_raw['f_tipo'].unique()))
-        sel_cd = st.multiselect("Filtrar CD:", options=sorted(df_raw['f_cd'].unique()))
-        sel_ger = st.multiselect("Filtrar Gerente:", options=sorted(df_raw['f_gerente'].unique()))
+        # Garante que a coluna divisional exista e seja tratada como string para o sorted
+        if 'divisional' in df_raw.columns:
+            gerentes = sorted(df_raw['divisional'].dropna().astype(str).unique())
+            f_ger = st.multiselect("Gerente", options=gerentes)
+        else:
+            f_ger = []
 
-    # Filtros
+    # Aplicação dos Filtros
     df_filt = df_raw.copy()
-    if sel_tipo: df_filt = df_filt[df_filt['f_tipo'].isin(sel_tipo)]
-    if sel_cd: df_filt = df_filt[df_filt['f_cd'].isin(sel_cd)]
-    if sel_ger: df_filt = df_filt[df_filt['f_gerente'].isin(sel_ger)]
+    if f_tipo: df_filt = df_filt[df_filt['tipo_clean'].isin(f_tipo)]
+    if f_cd: df_filt = df_filt[df_filt['cd_t'].isin(f_cd)]
+    if f_ger: df_filt = df_filt[df_filt['divisional'].astype(str).isin(f_ger)]
 
-    # --- DASHBOARD ---
-    st.markdown('<div class="header-box"><p class="header-title">📊 DASHBOARD ESTRATÉGICO MAGALOG 2026</p></div>', unsafe_allow_html=True)
+    # --- HEADER E KPIs ---
+    st.markdown('<div class="header-box"><p class="header-title">PAINEL FECHAMENTO MAGALOG 2026</p></div>', unsafe_allow_html=True)
     
-    # KPIs
-    perda_total = df_filt['total_perda'].sum()
-    fat_total = df_filt['v_fat'].sum()
-    perc = (abs(perda_total) / fat_total * 100) if fat_total > 0 else 0
+    v_perda_total = df_filt['v_1c'].sum() + df_filt['v_falta'].sum()
+    fat_soma = df_filt['v_fat'].sum()
+    perc_p = (abs(v_perda_total) / fat_soma * 100) if fat_soma > 0 else 0.0
 
-    k1, k2, k3, k4 = st.columns(4)
-    with k1: st.markdown(f'<div class="card-kpi"><p class="label-kpi">Perda Total</p><p class="value-kpi">R$ {perda_total:,.0f}</p></div>', unsafe_allow_html=True)
+    k1, k2, k3, k4, k5 = st.columns(5)
+    with k1: st.markdown(f'<div class="card-kpi"><p class="label-kpi">Perda Ano</p><p class="value-kpi">R$ {v_perda_total:,.0f}</p></div>', unsafe_allow_html=True)
     with k2: st.markdown(f'<div class="card-kpi"><p class="label-kpi">1º Ciclo</p><p class="value-kpi">R$ {df_filt["v_1c"].sum():,.0f}</p></div>', unsafe_allow_html=True)
     with k3: st.markdown(f'<div class="card-kpi"><p class="label-kpi">Falta Vol</p><p class="value-kpi">R$ {df_filt["v_falta"].sum():,.0f}</p></div>', unsafe_allow_html=True)
-    with k4: st.markdown(f'<div class="card-kpi"><p class="label-kpi">% Perda s/ Fat</p><p class="value-kpi">{perc:.3f}%</p></div>', unsafe_allow_html=True)
+    with k4: st.markdown(f'<div class="card-kpi"><p class="label-kpi">% Perdas</p><p class="value-kpi">{perc_p:.3f}%</p></div>', unsafe_allow_html=True)
+    with k5: 
+        tu = len(df_filt)
+        fu = int(df_filt['is_fin'].sum())
+        st.markdown(f'''<div class="card-kpi"><p class="label-kpi">Status Unidades</p><p class="value-kpi">{tu}</p>
+                    <p class="sub-value">Fin: {fu} | Pend: {tu-fu}</p></div>''', unsafe_allow_html=True)
 
-    # Gráficos Restaurados
-    st.write("---")
-    g1, g2 = st.columns(2)
+    # --- GRÁFICOS ---
+    g1, g2 = st.columns([1.2, 1])
     with g1:
-        # Gráfico por Tipo de Unidade (CD/LV/DQS)
-        df_g1 = df_filt.groupby('f_tipo')['total_perda'].sum().reset_index()
-        fig1 = px.bar(df_g1, x='f_tipo', y='total_perda', title="Perdas por Processo", color='f_tipo', template="plotly_dark")
-        st.plotly_chart(fig1, use_container_width=True)
-    
+        st.markdown("**Perdas por Tipo**")
+        df_g = df_filt.groupby('tipo_clean')[['v_1c', 'v_falta']].sum().sum(axis=1).reset_index(name='val')
+        fig = px.bar(df_g, x='tipo_clean', y=df_g['val'].abs(), color='tipo_clean', 
+                     color_discrete_map={'CD':'#3a86ff','LV':'#8338ec','DQS':'#06d6a0'}, text_auto='.2s')
+        fig.update_layout(template="plotly_dark", height=380, showlegend=False, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', yaxis_visible=False)
+        st.plotly_chart(fig, use_container_width=True)
+
     with g2:
-        # Perdas Acumuladas por Gerente
-        df_g2 = df_filt.groupby('f_gerente')['total_perda'].sum().reset_index().sort_values('total_perda')
-        fig2 = px.bar(df_g2, y='f_gerente', x='total_perda', orientation='h', title="Perdas por Gerente", template="plotly_dark")
-        st.plotly_chart(fig2, use_container_width=True)
+        st.markdown("**Status Treemap**")
+        df_tree = df_filt[df_filt['v_1c'] != 0].copy()
+        if not df_tree.empty:
+            fig_t = px.treemap(df_tree, path=['tipo_clean', 'cd_t'], values=df_tree['v_1c'].abs(),
+                               color='tipo_clean', color_discrete_map={'CD':'#0040ff','LV':'#aa00ff','DQS':'#00d2ff'})
+            fig_t.update_layout(template="plotly_dark", height=380, margin=dict(t=0,b=0,l=0,r=0))
+            st.plotly_chart(fig_t, use_container_width=True)
+        else:
+            st.info("Sem dados suficientes para gerar o Treemap.")
 
-    # Tabela com Estilo de Cores Seguro
-    st.markdown("### 📋 Detalhamento Operacional")
+    # --- TABELA DE DETALHAMENTO ---
+    st.markdown("**Detalhamento Operacional**")
+    df_tab = df_filt.copy()
+    # Cálculo de porcentagem seguro
+    df_tab['%_u'] = (df_tab['v_1c'] / df_tab['v_fat'] * 100).replace([float('inf'), -float('inf')], 0).fillna(0)
     
-    def aplicar_cor(val):
+    df_show = df_tab[['tipo_clean', 'cd_t', 'local', 'v_1c', '%_u', 'v_falta']].copy()
+
+    # Função de estilo corrigida para evitar conflito float vs str
+    def style_val(x):
         try:
-            num = float(val)
-            if num < 0: return 'color: #ff4b4b'
-            if num > 0: return 'color: #00ffcc'
+            val = float(x)
+            if val < 0: return 'background-color: #451a1a; color: white'
+            if val > 0: return 'background-color: #1a4523; color: white'
             return ''
-        except: return ''
+        except:
+            return ''
 
-    # Selecionamos apenas o necessário para a tabela
-    df_tab = df_filt[['f_tipo', 'f_cd', 'v_1c', 'v_falta', 'f_gerente']].copy()
-    df_tab.columns = ['Tipo', 'CD', '1º Ciclo', 'Falta Vol', 'Responsável']
-    
     st.dataframe(
-        df_tab.style.applymap(aplicar_cor, subset=['1º Ciclo', 'Falta Vol'])
-        .format({'1º Ciclo': 'R$ {:,.2f}', 'Falta Vol': 'R$ {:,.2f}'}),
-        use_container_width=True, hide_index=True
+        df_show.style.map(style_val, subset=['v_1c'])
+        .format({'v_1c': 'R$ {:,.2f}', 'v_falta': 'R$ {:,.2f}', '%_u': '{:.4f}%'}),
+        use_container_width=True, hide_index=True, height=450
     )
 
 except Exception as e:
-    st.error(f"Erro Crítico: {e}")
-    st.info("Verifique se a Planilha do Google está acessível e possui as colunas necessárias.")
+    st.error(f"Erro Crítico detectado: {e}")
+    st.info("Verifique se os nomes das colunas na planilha mudaram ou se há valores inválidos.")
