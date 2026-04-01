@@ -31,19 +31,17 @@ def limpar_valor(valor):
     except: return 0.0
 
 def mapear_divisional(cd_bruto):
-    # Se o CD for nulo, vazio ou 0, retorna None para podermos filtrar depois
     if pd.isna(cd_bruto) or str(cd_bruto).strip() in ["", "nan", "None", "0", "0.0"]:
         return None
-    
     try:
         s_cd = str(cd_bruto).split('.')[0]
         cd = int(re.sub(r'\D', '', s_cd))
     except:
-        return None # Se der erro na leitura do número, também ignora
+        return None
     
     if cd in [590, 300, 50]: return 'Renato Nesello'
     elif cd in [2650, 994, 991, 1100, 1500, 1800, 1250]: return 'Antônio Paiva'
-    elif cd in [350, 5200, 2900, 94, 490, 550, 2500,1440]: return 'Christian'
+    elif cd in [350, 5200, 2900, 94, 490, 550, 2500, 1440]: return 'Christian'
     elif cd in [204, 2489, 97, 549, 2599, 1116, 1889, 389, 1879, 299, 1899, 2989, 5589, 1450, 49, 2999, 2099, 985, 93, 5289, 5299, 2649, 893, 5599, 1869, 1390]: return 'Mileide'
     else: return 'Outros'
 
@@ -53,47 +51,28 @@ def load_data():
     GID_MAIN = "1358149674"
     url = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID_MAIN}"
     df = pd.read_csv(url).dropna(how='all')
-    # Normaliza nomes de colunas
     df.columns = [re.sub(r'[^a-zA-Z0-9]', '_', str(c).strip().lower()) for c in df.columns]
-    
-    # --- CURA DOS DADOS (Evita o erro de float vs str) ---
     for col in ['tipo', 'semestre', 'cd', 'local']:
-     if col in df.columns:
-        # Transforma tudo em texto e remove o 'nan' (vazio)
-        df[col] = df[col].astype(str).replace('nan', '')
-            
+        if col in df.columns:
+            df[col] = df[col].astype(str).replace('nan', '')
     return df
 
 try:
     df_raw = load_data().copy()
 
-    # Sidebar
-    # Sidebar - Filtros com tratamento 'inline' para evitar erro de float vs str
-    # ==========================================
-    # SIDEBAR (FILTROS NA LATERAL)
-    # ==========================================
     with st.sidebar:
         st.header("⚙️ Gerenciamento")
         if st.button("🔄 Atualizar Dados"):
             st.cache_data.clear()
             st.rerun()
-        
         st.divider()
-        
-        # Criando as colunas de apoio para os filtros
         df_raw['tipo_clean'] = df_raw['tipo'].fillna('').astype(str).str.upper().str.strip()
         df_raw['divisional'] = df_raw['cd'].apply(mapear_divisional).astype(str)
-        
-        # Filtros (Eles agora ficarão na lateral esquerda)
         opcoes_tipo = sorted([str(x) for x in df_raw['tipo_clean'].unique() if x != ''])
         tipos_sel = st.multiselect("Filtrar por Tipo", options=opcoes_tipo)
-        
-        opcoes_div = sorted([str(x) for x in df_raw['divisional'].unique()])
+        opcoes_div = sorted([str(x) for x in df_raw['divisional'].unique() if x not in ['None', 'nan']])
         divs_sel = st.multiselect("Filtrar por Divisional", options=opcoes_div)
 
-    # A partir daqui, tudo o que não tiver "with st.sidebar" vai para o centro da tela
-
-    # Localização Dinâmica de Colunas
     def get_col(name_snippet):
         match = [c for c in df_raw.columns if name_snippet in c]
         return match[0] if match else None
@@ -102,21 +81,17 @@ try:
     c_1c = get_col('1__ciclo')
     c_falta = get_col('falta_vol')
 
-    # Conversão Numérica Segura
     df_raw['v_1c'] = df_raw[c_1c].apply(limpar_valor) if c_1c else 0.0
     df_raw['v_fat'] = df_raw[c_fat].apply(limpar_valor) if c_fat else 0.0
     df_raw['v_falta'] = df_raw[c_falta].apply(limpar_valor) if c_falta else 0.0
     df_raw['is_finalizado'] = df_raw['v_1c'] != 0
 
-    # Aplicação de Filtros
     df_filt = df_raw.copy()
     if tipos_sel: df_filt = df_filt[df_filt['tipo_clean'].isin(tipos_sel)]
     if divs_sel: df_filt = df_filt[df_filt['divisional'].isin(divs_sel)]
 
-    # Cabeçalho
     st.markdown('<div class="header-container"><div class="main-title">BI FECHAMENTO MAGALOG 2026</div></div>', unsafe_allow_html=True)
 
-    # Cálculos KPIs
     perda_1c = df_filt['v_1c'].sum()
     falta_vol = df_filt['v_falta'].sum()
     fat_total = df_filt['v_fat'].sum()
@@ -128,143 +103,69 @@ try:
     total_pendentes = total_un - finalizados
     perc_conclusao = (finalizados / total_un * 100) if total_un > 0 else 0
     
-    # Pendentes (Tratamento de String para evitar erro)
     df_pend = df_filt[~df_filt['is_finalizado']]
     pend_1s = len(df_pend[df_pend['semestre'].astype(str).str.contains('1', na=False)])
 
-    # Exibição dos Cards
     col_c1, col_c2, col_c3 = st.columns([1.2, 1, 1.2])
-
     with col_c1:
         st.markdown(f'<div class="metric-card"><div class="metric-label">Perda Consolidada</div><div class="metric-value">R$ {perda_consolidada:,.2f}</div><div style="color:#8b949e; font-size:12px;">1º Ciclo: R$ {perda_1c:,.2f}<br>Falta Vol: {falta_vol:,.0f}</div></div>', unsafe_allow_html=True)
-
     with col_c2:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">% Perda Geral</div><div class="metric-value">{perc_global:.3f}%</div><div style="color:#8b949e; font-size:12px;">Sobre faturamento total</div></div>', unsafe_allow_html=True)
-
+        st.markdown(f'<div class="metric-card"><div class="metric-label">% Perda Global</div><div class="metric-value">{perc_global:.3f}%</div><div style="color:#8b949e; font-size:12px;">Sobre faturamento total</div></div>', unsafe_allow_html=True)
     with col_c3:
         st.markdown(f'<div class="metric-card"><div class="metric-label">Evolução</div><div class="metric-value">{int(finalizados)}/{total_un} <span style="font-size:13px; color:#58a6ff;">({perc_conclusao:.1f}%)</span></div><div style="color:#8b949e; font-size:12px;">Pendentes 1S: {pend_1s}<br>Total Pendentes: {total_pendentes}</div><div class="progress-container"><div class="progress-bar" style="width: {perc_conclusao}%"></div></div></div>', unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Gráficos
     g1, g2 = st.columns([1, 1.2])
     with g1:
         st.subheader("Perda por Divisional")
-        
-        # FILTRO PARA LIMPAR O 'NULL' DO GRÁFICO
-        # Remove valores nulos, a string 'None', 'null' ou espaços vazios
-        df_pie = df_filt[
-            df_filt['divisional'].notna() & 
-            (~df_filt['divisional'].astype(str).str.lower().isin(['none', 'null', 'nan', '']))
-        ].copy()
-
-        # Usamos o df_pie apenas para este gráfico
+        df_pie = df_filt[df_filt['divisional'].notna() & (~df_filt['divisional'].astype(str).str.lower().isin(['none', 'null', 'nan', '']))].copy()
         fig = px.pie(df_pie, values=df_pie['v_1c'].abs(), names='divisional', hole=0.6)
-        
-        fig.update_layout(
-            template="plotly_dark", 
-            height=300, 
-            margin=dict(t=10, b=10, l=10, r=10), 
-            paper_bgcolor='rgba(0,0,0,0)',
-            showlegend=True
-        )
+        fig.update_layout(template="plotly_dark", height=300, margin=dict(t=10, b=10, l=10, r=10), paper_bgcolor='rgba(0,0,0,0)')
         st.plotly_chart(fig, use_container_width=True)
 
     with g2:
         st.subheader("Visão Geral por CD")
         if not df_filt.empty:
-            # --- CURA DOS DADOS DO TREEMAP ---
-            # Criamos um DataFrame temporário apenas para o gráfico para formatar os CDs
             df_tree = df_filt[df_filt['v_1c'] != 0].copy()
-            
-            # Converte CD para string e remove o '.0' caso exista
             df_tree['cd'] = df_tree['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
-            
-            # Geramos o gráfico usando o df_tree formatado
-            fig_t = px.treemap(
-                df_tree, 
-                path=['divisional', 'cd'], 
-                values=df_tree['v_1c'].abs(), 
-                color='v_1c', 
-                color_continuous_scale='RdBu_r'
-            )
-            
-            fig_t.update_layout(
-                template="plotly_dark", 
-                height=300, 
-                margin=dict(t=10, b=10, l=10, r=10), 
-                paper_bgcolor='rgba(0,0,0,0)'
-            )
-            
-            # Ajuste extra: Garante que o texto exibido no gráfico seja o CD limpo
+            fig_t = px.treemap(df_tree, path=['divisional', 'cd'], values=df_tree['v_1c'].abs(), color='v_1c', color_continuous_scale='RdBu_r')
+            fig_t.update_layout(template="plotly_dark", height=300, margin=dict(t=10, b=10, l=10, r=10), paper_bgcolor='rgba(0,0,0,0)')
             fig_t.update_traces(textinfo="label+value")
-            
             st.plotly_chart(fig_t, use_container_width=True)
 
-   # --- PREPARAÇÃO DA TABELA FINAL ---
-    # --- PREPARAÇÃO DA TABELA FINAL ---
+    # --- TABELA FINAL ---
     st.subheader("📋 Detalhamento por Unidade")
-
     df_tab = df_filt.copy()
-
-    # 1. Cálculo do % de Perda por Unidade
     df_tab['% Perda'] = (df_tab['v_1c'] / df_tab['v_fat'] * 100).fillna(0)
-
-    # 2. Limpeza do CD (removendo .0)
     df_tab['cd'] = df_tab['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
-
-    # 3. Seleção de colunas
     colunas_show = ['semestre', 'tipo_clean', 'divisional', 'cd', 'local', 'v_1c', '% Perda', 'v_falta', 'is_finalizado']
     df_exibir = df_tab[colunas_show]
 
-    # 4. FUNÇÃO DE ESTILIZAÇÃO COM ALTO CONTRASTE
     def style_performance(row):
         styles = [''] * len(row)
         v1c = row['v_1c']
-        
-        # Cores mais claras e vibrantes para leitura no Dark Mode
-        # Vermelho vivo para Perdas | Verde limão para Bom Resultado
         if v1c < 0:
-            bg_color = '#641e1e' # Vermelho escuro mas saturado
-            text_color = '#ff9999' # Rosa/Vermelho claro para leitura
+            bg_color = '#641e1e' 
+            text_color = '#ff9999' 
         else:
-            bg_color = '#1e4620' # Verde floresta
-            text_color = '#99ff99' # Verde limão claro
-
-        # Aplicamos o estilo apenas nas colunas de interesse
+            bg_color = '#1e4620' 
+            text_color = '#99ff99' 
+        
         idx_v1c = row.index.get_loc('v_1c')
         idx_perda = row.index.get_loc('% Perda')
-        
         styles[idx_v1c] = f'background-color: {bg_color}; color: {text_color}; font-weight: bold;'
         styles[idx_perda] = f'background-color: {bg_color}; color: {text_color}; font-weight: bold;'
-        
         return styles
 
-    # 5. EXIBIÇÃO DA TABELA
     st.dataframe(
         df_exibir.style.apply(style_performance, axis=1),
         column_config={
-            "v_1c": st.column_config.NumberColumn("Resultado 1C", format="R$ %.2f", help="Valores negativos indicam perda."),
-            "% Perda": st.column_config.NumberColumn("% Perda", format="%.3f%%"),
+            "v_1c": st.column_config.NumberColumn("Resultado 1C", format="R$ %.2f"),
+            "% Perda": st.column_config.NumberColumn("% Perda", format="%.4f%%"),
             "v_falta": st.column_config.NumberColumn("Falta Vol", format="%.0f"),
             "is_finalizado": st.column_config.CheckboxColumn("Fim?"),
-            "tipo_clean": "Tipo",
-            "cd": "CD",
-            "local": "Unidade"
-        },
-        use_container_width=True,
-        hide_index=True
-    )
-    # Aplicando a estilização
-    st.dataframe(
-        df_exibir.style.map(style_v1c, subset=['v_1c', '% Perda']),
-        column_config={
-            "v_1c": st.column_config.NumberColumn("Resultado 1C", format="R$ %.2f"),
-            "% Perda": st.column_config.NumberColumn("% Perda", format="%.3f%%"),
-            "v_falta": st.column_config.NumberColumn("Falta Vol", format="%.0f"),
-            "is_finalizado": st.column_config.CheckboxColumn("Finalizado?"),
-            "tipo_clean": "Tipo",
-            "cd": "CD"
+            "tipo_clean": "Tipo", "cd": "CD", "local": "Unidade"
         },
         use_container_width=True,
         hide_index=True
