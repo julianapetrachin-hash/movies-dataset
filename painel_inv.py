@@ -110,27 +110,30 @@ try:
     with k3: st.markdown(f'<div class="card-neon"><div class="label-neon">Volume Falta</div><div class="value-neon">{int(vfal):,}</div><div class="sub-neon">Itens Pendentes</div></div>', unsafe_allow_html=True)
     with k4: st.markdown(f'<div class="card-neon"><div class="label-neon">Evolução</div><div class="value-neon">{concl:.1f}%</div><div class="p-bar-bg"><div class="p-bar-fill" style="width:{concl}%"></div></div></div>', unsafe_allow_html=True)
 
-   # --- SEÇÃO 1: GRÁFICOS DO MEIO (RESULTADO ACUMULADO + TREEMAP) ---
+  # --- SEÇÃO 1: GRÁFICOS DO MEIO (RESULTADO CONSOLIDADO + TREEMAP) ---
     st.markdown("<br>", unsafe_allow_html=True)
     
     col_esquerda, col_direita = st.columns([1, 1.1])
 
     with col_esquerda:
-        st.subheader("📊 Resultado Acumulado por Processo")
+        st.subheader("📊 Resultado Consolidado por Processo")
         
-        # Agrupamos o resultado por Tipo
-        df_proc = df_filt.groupby('tipo_clean')['v_1c'].sum().reset_index()
+        # 1. Calculamos a Perda Consolidada (1C + Falta) por Tipo
+        # Criamos uma coluna temporária de soma para o agrupamento
+        df_filt['v_consolidada_tipo'] = df_filt['v_1c'] + df_filt['v_falta']
         
-        # Criamos uma coluna auxiliar com valor absoluto para a barra subir
-        df_proc['v_abs'] = df_proc['v_1c'].abs()
+        df_proc = df_filt.groupby('tipo_clean')['v_consolidada_tipo'].sum().reset_index()
         
-        # Gráfico de Barras com as barras para cima (usando v_abs)
+        # 2. Criamos o valor absoluto para a barra crescer para cima
+        df_proc['v_abs'] = df_proc['v_consolidada_tipo'].abs()
+        
+        # 3. Gráfico de Barras
         fig_b = px.bar(
             df_proc, 
             x='tipo_clean', 
-            y='v_abs', # Usar absoluto faz a barra ficar para cima
+            y='v_abs', 
             color='tipo_clean',
-            text='v_1c', # Mas o texto exibido continua sendo o valor real (negativo)
+            text='v_consolidada_tipo', # Exibe o valor real (negativo)
             color_discrete_map={
                 'CD': '#3a7bd5',   
                 'LV': '#7000ff',   
@@ -140,7 +143,7 @@ try:
         
         fig_b.update_traces(
             width=0.5,
-            texttemplate='R$ %{text:,.0f}', # Formata o valor negativo no topo da barra
+            texttemplate='R$ %{text:,.0f}', 
             textposition='outside',
             marker_line_width=0
         )
@@ -153,21 +156,25 @@ try:
             plot_bgcolor='rgba(0,0,0,0)',
             showlegend=False,
             xaxis_title="",
-            yaxis_visible=False # Remove o eixo Y para limpar o visual como no print
+            yaxis_visible=False 
         )
         st.plotly_chart(fig_b, use_container_width=True)
 
     with col_direita:
         st.subheader("🏢 Status de Saúde (Tipo > CD)")
         
-        df_tree = df_filt[df_filt['v_1c'] != 0].copy()
+        # No Treemap, também usamos a Perda Consolidada para definir o tamanho dos blocos
+        df_tree = df_filt.copy()
+        df_tree['v_consolidada_tree'] = df_tree['v_1c'] + df_tree['v_falta']
+        
+        # Filtramos apenas onde houve alguma perda/movimentação
+        df_tree = df_tree[df_tree['v_consolidada_tree'] != 0].copy()
         df_tree['cd_label'] = df_tree['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
         
-        # HIERARQUIA: Tipo (CD, LV, DQS) -> Código do CD
         fig_t = px.treemap(
             df_tree, 
             path=['tipo_clean', 'cd_label'],
-            values=df_tree['v_1c'].abs(), 
+            values=df_tree['v_consolidada_tree'].abs(), 
             color='tipo_clean',
             color_discrete_map={
                 'CD': '#0040ff', 
@@ -178,7 +185,7 @@ try:
         
         fig_t.update_traces(
             textinfo="label+value",
-            texttemplate="<span style='font-size:20px'><b>%{label}</b></span><br>R$ %{value:,.0f}",
+            texttemplate="<span style='font-size:18px'><b>%{label}</b></span><br>R$ %{value:,.0f}",
             marker_line_width=2,
             marker_line_color="#0d1117"
         )
@@ -190,6 +197,5 @@ try:
             paper_bgcolor='rgba(0,0,0,0)'
         )
         st.plotly_chart(fig_t, use_container_width=True)
-
 except Exception as e:
     st.error(f"⚠️ Erro ao renderizar: {e}")
