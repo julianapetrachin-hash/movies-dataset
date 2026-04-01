@@ -118,22 +118,26 @@ try:
     with col_esquerda:
         st.subheader("📊 Resultado Consolidado por Processo")
         
-        # 1. Calculamos a Perda Consolidada (1C + Falta) por Tipo
-        # Criamos uma coluna temporária de soma para o agrupamento
-        df_filt['v_consolidada_tipo'] = df_filt['v_1c'] + df_filt['v_falta']
+        # Criamos uma cópia para não afetar o dataframe original e garantimos os nomes
+        df_proc_plot = df_filt.copy()
         
-        df_proc = df_filt.groupby('tipo_clean')['v_consolidada_tipo'].sum().reset_index()
+        # PADRONIZAÇÃO: Somamos v_1c e v_fal (ou v_falta, dependendo do seu mapeamento)
+        # Verifique se no seu script a coluna de falta se chama 'v_fal' ou 'v_falta'
+        col_falta_nome = 'v_fal' if 'v_fal' in df_proc_plot.columns else 'v_falta'
         
-        # 2. Criamos o valor absoluto para a barra crescer para cima
+        df_proc_plot['v_consolidada_tipo'] = df_proc_plot['v_1c'] + df_proc_plot[col_falta_nome]
+        
+        df_proc = df_proc_plot.groupby('tipo_clean')['v_consolidada_tipo'].sum().reset_index()
+        
+        # Valor absoluto para a barra crescer para cima
         df_proc['v_abs'] = df_proc['v_consolidada_tipo'].abs()
         
-        # 3. Gráfico de Barras
         fig_b = px.bar(
             df_proc, 
             x='tipo_clean', 
             y='v_abs', 
             color='tipo_clean',
-            text='v_consolidada_tipo', # Exibe o valor real (negativo)
+            text='v_consolidada_tipo', 
             color_discrete_map={
                 'CD': '#3a7bd5',   
                 'LV': '#7000ff',   
@@ -163,11 +167,11 @@ try:
     with col_direita:
         st.subheader("🏢 Status de Saúde (Tipo > CD)")
         
-        # No Treemap, também usamos a Perda Consolidada para definir o tamanho dos blocos
         df_tree = df_filt.copy()
-        df_tree['v_consolidada_tree'] = df_tree['v_1c'] + df_tree['v_falta']
+        # Mesma lógica de padronização aqui
+        col_falta_tree = 'v_fal' if 'v_fal' in df_tree.columns else 'v_falta'
+        df_tree['v_consolidada_tree'] = df_tree['v_1c'] + df_tree[col_falta_tree]
         
-        # Filtramos apenas onde houve alguma perda/movimentação
         df_tree = df_tree[df_tree['v_consolidada_tree'] != 0].copy()
         df_tree['cd_label'] = df_tree['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
         
@@ -197,5 +201,6 @@ try:
             paper_bgcolor='rgba(0,0,0,0)'
         )
         st.plotly_chart(fig_t, use_container_width=True)
+
 except Exception as e:
     st.error(f"⚠️ Erro ao renderizar: {e}")
