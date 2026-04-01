@@ -134,4 +134,21 @@ try:
         
         # AQUI REATIVAMOS O ESTILO USANDO UMA FUNÇÃO QUE NÃO QUEBRA
         def color_v1c(val):
-            return f'background-color: {"#451a1a" if val
+            return f'background-color: {"#451a1a" if val < 0 else "#1a4523"}'
+
+        # Renderizamos com uma KEY única baseada no tempo para forçar o Streamlit a destruir o cache antigo
+        st.dataframe(
+            df_display.style.map(color_v1c, subset=['v_1c']), 
+            column_config={"v_1c": st.column_config.NumberColumn("Resultado", format="R$ %.2f"), "%_unid": st.column_config.NumberColumn("% Unid", format="%.4f%%")},
+            use_container_width=True, hide_index=True, height=450,
+            key=f"df_table_{int(time.time())}"
+        )
+    
+    with b2:
+        st.subheader("📍 Perda / Gerente")
+        df_pi = df_filt[df_filt['divisional'] != "Outros"].copy()
+        if not df_pi.empty:
+            st.plotly_chart(px.pie(df_pi, values=df_pi['v_1c'].abs(), names='divisional', hole=0.6, template="plotly_dark", height=450), use_container_width=True)
+
+except Exception as e:
+    st.error(f"Erro Crítico: {e}")
