@@ -6,23 +6,26 @@ import re
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(layout="wide", page_title="Magalog | BI Executive", page_icon="📊")
 
-# --- CSS (Espaçamento e Estilo do Print) ---
+# --- CSS (Ajuste de Topo e Estilo do Título) ---
 st.markdown("""
     <style>
     [data-testid="stHeader"] { display: none; }
-    .block-container { padding-top: 1rem !important; margin-top: -20px !important; }
+    .block-container { padding-top: 1.5rem !important; margin-top: -20px !important; }
     [data-testid="stAppViewContainer"] { background-color: #0b0e14 !important; }
+    
     .header-box {
         background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
-        padding: 12px; border-radius: 5px; text-align: center;
+        padding: 15px; border-radius: 5px; text-align: center;
         margin-bottom: 25px; border-bottom: 3px solid #00d2ff;
     }
     .header-title { color: white !important; font-size: 26px !important; font-weight: 800 !important; letter-spacing: 2px; }
+
     .card-kpi {
         background: #1c222d; border: 1px solid #313d4f; border-radius: 10px;
-        padding: 15px; text-align: center; border-top: 3px solid #00d2ff; min-height: 110px;
+        padding: 15px; text-align: center; border-top: 3px solid #00d2ff;
+        min-height: 110px;
     }
-    .value-kpi { color: white; font-size: 22px; font-weight: 900; margin: 0; }
+    .value-kpi { color: white; font-size: 24px; font-weight: 900; margin: 0; }
     .label-kpi { color: #8b949e; font-size: 11px; text-transform: uppercase; margin-bottom: 5px; }
     .sub-value { color: #00d2ff; font-size: 12px; font-weight: 700; margin-top: 5px; }
     </style>
@@ -33,12 +36,11 @@ st.markdown("""
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/1iaHnigQGOH5w4xFlZXN0cXYSZlLqPuHE1Pdsgy0XSdI/export?format=csv&gid=1358149674"
     df = pd.read_csv(url).dropna(how='all')
-    # Normalização agressiva de colunas
     df.columns = [re.sub(r'[^a-z0-9]', '_', str(c).strip().lower()) for c in df.columns]
     return df
 
 def limpar_valor(v):
-    if pd.isna(v) or str(v).strip() in ["", "-", "nan", "None"]: return 0.0
+    if pd.isna(v) or str(v).strip() in ["", "-", "nan", "None", "null"]: return 0.0
     val = str(v).replace('R$', '').replace(' ', '').replace('.', '').replace(',', '.')
     val = re.sub(r'[^0-9\.\-]', '', val)
     try: return float(val)
@@ -47,23 +49,23 @@ def limpar_valor(v):
 try:
     df_raw = load_data().copy()
     
-    # BUSCA DINÂMICA DE COLUNAS (Evita KeyError)
-    col_1c = next((c for c in df_raw.columns if '1' in c and 'ciclo' in c), None)
-    col_falta = next((c for c in df_raw.columns if 'falta' in c and 'vol' in c), None)
-    col_fat = next((c for c in df_raw.columns if 'faturamento' in c or 'fat' in c), None)
-    col_div = next((c for c in df_raw.columns if 'divisional' in c or 'gerente' in c), None)
+    # Mapeamento Dinâmico de Colunas (Evita KeyError faturamento)
+    c_1c = next((c for c in df_raw.columns if '1' in c and 'ciclo' in c), None)
+    c_falta = next((c for c in df_raw.columns if 'falta' in c and 'vol' in c), None)
+    c_fat = next((c for c in df_raw.columns if 'faturamento' in c or 'fat' in c), None)
+    c_div = next((c for c in df_raw.columns if 'divisional' in c or 'gerente' in c), None)
 
-    # Processamento Numérico
-    df_raw['v_1c'] = df_raw[col_1c].apply(limpar_valor) if col_1c else 0.0
-    df_raw['v_falta'] = df_raw[col_falta].apply(limpar_valor) if col_falta else 0.0
-    df_raw['v_fat'] = df_raw[col_fat].apply(limpar_valor) if col_fat else 0.0
+    # Conversão Numérica Explícita (Previne o erro de float vs str)
+    df_raw['v_1c'] = pd.to_numeric(df_raw[c_1c].apply(limpar_valor), errors='coerce').fillna(0.0)
+    df_raw['v_falta'] = pd.to_numeric(df_raw[c_falta].apply(limpar_valor), errors='coerce').fillna(0.0)
+    df_raw['v_fat'] = pd.to_numeric(df_raw[c_fat].apply(limpar_valor), errors='coerce').fillna(0.0)
     
-    df_raw['tipo_clean'] = df_raw['tipo'].fillna('OUTROS').astype(str).str.upper().str.strip() if 'tipo' in df_raw.columns else 'OUTROS'
-    df_raw['cd_t'] = df_raw['cd'].astype(str).str.replace(r'\.0$', '', regex=True) if 'cd' in df_raw.columns else 'N/A'
-    df_raw['div_clean'] = df_raw[col_div].fillna('OUTROS').astype(str).str.upper() if col_div else 'OUTROS'
+    df_raw['tipo_clean'] = df_raw['tipo'].fillna('OUTROS').astype(str).str.upper().str.strip()
+    df_raw['cd_t'] = df_raw['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
+    df_raw['div_clean'] = df_raw[c_div].fillna('OUTROS').astype(str).str.upper() if c_div else 'OUTROS'
     df_raw['is_fin'] = df_raw['v_1c'] != 0
 
-    # --- SIDEBAR (FILTROS) ---
+    # --- FILTROS SIDEBAR ---
     with st.sidebar:
         st.header("⚙️ Filtros")
         if st.button("🔄 Atualizar Dados"):
@@ -79,10 +81,10 @@ try:
     if f_ger: df_filt = df_filt[df_filt['div_clean'].isin(f_ger)]
     if f_cd: df_filt = df_filt[df_filt['cd_t'].isin(f_cd)]
 
-    # --- TÍTULO ---
+    # --- HEADER ---
     st.markdown('<div class="header-box"><p class="header-title">PAINEL FECHAMENTO MAGALOG 2026</p></div>', unsafe_allow_html=True)
 
-    # --- KPIS ---
+    # --- KPIS (Ordem Corrigida) ---
     v_1c = df_filt['v_1c'].sum()
     v_falta = df_filt['v_falta'].sum()
     v_perda_ano = v_1c + v_falta
@@ -105,9 +107,10 @@ try:
     # --- GRÁFICOS ---
     g1, g2 = st.columns([1.2, 1])
     with g1:
-        st.markdown("**Perdas vs. Estornos**")
+        st.markdown("**Perdas vs. Estornos (Visão por Tipo)**")
         df_g = df_filt.groupby('tipo_clean')[['v_1c', 'v_falta']].sum().reset_index()
         df_g['total'] = df_g['v_1c'] + df_g['v_falta']
+        # Barras para cima (Absoluto) com rótulo real (Negativo)
         fig = px.bar(df_g, x='tipo_clean', y=df_g['total'].abs(), color='tipo_clean', 
                      color_discrete_map={'CD':'#3a86ff','LV':'#8338ec','DQS':'#06d6a0'},
                      text=df_g['total'].apply(lambda x: f"R$ {x:,.0f}"))
@@ -122,23 +125,6 @@ try:
         fig_t.update_layout(template="plotly_dark", height=380, margin=dict(t=0,b=0,l=0,r=0))
         st.plotly_chart(fig_t, use_container_width=True)
 
-    # --- TABELA ---
+    # --- TABELA (Higienização de Tipos para Evitar Erro de Comparação) ---
     st.markdown("**Detalhamento Operacional**")
-    df_tab = df_filt.copy()
-    df_tab['%_perda_unid'] = (df_tab['v_1c'] / df_tab['v_fat'] * 100).replace([float('inf'), float('-inf')], 0).fillna(0)
-    df_show = df_tab[['tipo_clean', 'cd_t', 'div_clean', 'v_1c', '%_perda_unid', 'v_falta', 'is_fin']].reset_index(drop=True)
-    
-    def style_rows(row):
-        try: val = float(row['v_1c'])
-        except: val = 0.0
-        color = '#451a1a' if val < 0 else '#1a4523'
-        return [f'background-color: {color}'] * len(row)
-
-    st.dataframe(
-        df_show.style.apply(style_rows, axis=1)
-        .format({'v_1c': 'R$ {:,.2f}', 'v_falta': 'R$ {:,.2f}', '%_perda_unid': '{:.4f}%'}), 
-        use_container_width=True, hide_index=True
-    )
-
-except Exception as e:
-    st.error(f"Erro detectado: {e}")
+    df_tab = df_filt
