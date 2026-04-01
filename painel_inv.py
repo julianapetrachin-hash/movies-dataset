@@ -36,8 +36,7 @@ def mapear_divisional(cd_bruto):
     try:
         s_cd = str(cd_bruto).split('.')[0]
         cd = int(re.sub(r'\D', '', s_cd))
-    except:
-        return None
+    except: return None
     
     if cd in [590, 300, 50]: return 'Renato Nesello'
     elif cd in [2650, 994, 991, 1100, 1500, 1800, 1250]: return 'Antônio Paiva'
@@ -61,8 +60,7 @@ try:
     # 1. Carrega os dados atuais
     df_raw = load_data().copy()
 
-    # --- 2. INSERE OS DADOS FIXOS DE 2024 AQUI ---
-    # Usamos os nomes de colunas padronizados para o merge funcionar depois
+    # --- 2. DADOS FIXOS DE 2024 ---
     dados_2024 = [
         {"tipo_clean": "CD", "semestre": "1º semestre", "v_24": -9415271},
         {"tipo_clean": "CD", "semestre": "2º semestre", "v_24": -5379088},
@@ -75,27 +73,7 @@ try:
     ]
     df_2024 = pd.DataFrame(dados_2024)
 
-    # 3. Configuração da Sidebar (Filtros)
-    with st.sidebar:
-        st.header("⚙️ Gerenciamento")
-        if st.button("🔄 Atualizar Dados"):
-            st.cache_data.clear()
-            st.rerun()
-        st.divider()
-        
-        # Criação das colunas de apoio
-        df_raw['tipo_clean'] = df_raw['tipo'].fillna('').astype(str).str.upper().str.strip()
-        df_raw['divisional'] = df_raw['cd'].apply(mapear_divisional).astype(str)
-        
-        # Filtros dinâmicos
-        opcoes_tipo = sorted([str(x) for x in df_raw['tipo_clean'].unique() if x != ''])
-        tipos_sel = st.multiselect("Filtrar por Tipo", options=opcoes_tipo)
-        
-        opcoes_div = sorted([str(x) for x in df_raw['divisional'].unique() if x not in ['None', 'nan']])
-        divs_sel = st.multiselect("Filtrar por Divisional", options=opcoes_div)
-
-    # O RESTANTE DO SEU CÓDIGO (Cálculos, Filtros de df_filt, etc) SEGUE ABAIXO...
-
+    # 3. Sidebar (Filtros)
     with st.sidebar:
         st.header("⚙️ Gerenciamento")
         if st.button("🔄 Atualizar Dados"):
@@ -109,14 +87,12 @@ try:
         opcoes_div = sorted([str(x) for x in df_raw['divisional'].unique() if x not in ['None', 'nan']])
         divs_sel = st.multiselect("Filtrar por Divisional", options=opcoes_div)
 
+    # 4. Processamento Numérico
     def get_col(name_snippet):
         match = [c for c in df_raw.columns if name_snippet in c]
         return match[0] if match else None
 
-    c_fat = get_col('faturamento')
-    c_1c = get_col('1__ciclo')
-    c_falta = get_col('falta_vol')
-
+    c_fat = get_col('faturamento'); c_1c = get_col('1__ciclo'); c_falta = get_col('falta_vol')
     df_raw['v_1c'] = df_raw[c_1c].apply(limpar_valor) if c_1c else 0.0
     df_raw['v_fat'] = df_raw[c_fat].apply(limpar_valor) if c_fat else 0.0
     df_raw['v_falta'] = df_raw[c_falta].apply(limpar_valor) if c_falta else 0.0
@@ -126,32 +102,40 @@ try:
     if tipos_sel: df_filt = df_filt[df_filt['tipo_clean'].isin(tipos_sel)]
     if divs_sel: df_filt = df_filt[df_filt['divisional'].isin(divs_sel)]
 
+    # --- UI PRINCIPAL ---
     st.markdown('<div class="header-container"><div class="main-title">BI FECHAMENTO MAGALOG 2026</div></div>', unsafe_allow_html=True)
 
-    perda_1c = df_filt['v_1c'].sum()
-    falta_vol = df_filt['v_falta'].sum()
-    fat_total = df_filt['v_fat'].sum()
+    # KPIs
+    perda_1c = df_filt['v_1c'].sum(); falta_vol = df_filt['v_falta'].sum(); fat_total = df_filt['v_fat'].sum()
     perda_consolidada = perda_1c + falta_vol
     perc_global = (abs(perda_consolidada) / fat_total * 100) if fat_total > 0 else 0.0
-
-    total_un = len(df_filt)
-    finalizados = df_filt['is_finalizado'].sum()
-    total_pendentes = total_un - finalizados
+    total_un = len(df_filt); finalizados = df_filt['is_finalizado'].sum()
     perc_conclusao = (finalizados / total_un * 100) if total_un > 0 else 0
-    
     df_pend = df_filt[~df_filt['is_finalizado']]
     pend_1s = len(df_pend[df_pend['semestre'].astype(str).str.contains('1', na=False)])
 
-    col_c1, col_c2, col_c3 = st.columns([1.2, 1, 1.2])
-    with col_c1:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Perda Consolidada</div><div class="metric-value">R$ {perda_consolidada:,.2f}</div><div style="color:#8b949e; font-size:12px;">1º Ciclo: R$ {perda_1c:,.2f}<br>Falta Vol: {falta_vol:,.0f}</div></div>', unsafe_allow_html=True)
-    with col_c2:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">% Perda Global</div><div class="metric-value">{perc_global:.3f}%</div><div style="color:#8b949e; font-size:12px;">Sobre faturamento total</div></div>', unsafe_allow_html=True)
-    with col_c3:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Evolução</div><div class="metric-value">{int(finalizados)}/{total_un} <span style="font-size:13px; color:#58a6ff;">({perc_conclusao:.1f}%)</span></div><div style="color:#8b949e; font-size:12px;">Pendentes 1S: {pend_1s}<br>Total Pendentes: {total_pendentes}</div><div class="progress-container"><div class="progress-bar" style="width: {perc_conclusao}%"></div></div></div>', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1.2, 1, 1.2])
+    with c1: st.markdown(f'<div class="metric-card"><div class="metric-label">Perda Consolidada</div><div class="metric-value">R$ {perda_consolidada:,.2f}</div><div style="color:#8b949e; font-size:12px;">1º Ciclo: R$ {perda_1c:,.2f}<br>Falta Vol: {falta_vol:,.0f}</div></div>', unsafe_allow_html=True)
+    with c2: st.markdown(f'<div class="metric-card"><div class="metric-label">% Perda Global</div><div class="metric-value">{perc_global:.3f}%</div><div style="color:#8b949e; font-size:12px;">Sobre faturamento total</div></div>', unsafe_allow_html=True)
+    with c3: st.markdown(f'<div class="metric-card"><div class="metric-label">Evolução</div><div class="metric-value">{int(finalizados)}/{total_un} <span style="font-size:13px; color:#58a6ff;">({perc_conclusao:.1f}%)</span></div><div style="color:#8b949e; font-size:12px;">Pendentes 1S: {pend_1s}<br>Total Pendentes: {total_un - finalizados}</div><div class="progress-container"><div class="progress-bar" style="width: {perc_conclusao}%"></div></div></div>', unsafe_allow_html=True)
+
+    # --- COMPARATIVO 2024 (NOVO SEÇÃO) ---
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.subheader("🔄 Resumo Comparativo YoY (Ano Anterior)")
+    resumo_atual = df_filt.groupby(['tipo_clean', 'semestre'])['v_1c'].sum().reset_index()
+    df_comp = pd.merge(resumo_atual, df_2024, on=['tipo_clean', 'semestre'], how='left').fillna(0)
+    df_comp['Diferença'] = df_comp['v_1c'] - df_comp['v_24']
+    
+    st.dataframe(df_comp, column_config={
+        "tipo_clean": "Tipo", "semestre": "Semestre",
+        "v_1c": st.column_config.NumberColumn("Custo Atual", format="R$ %.2f"),
+        "v_24": st.column_config.NumberColumn("Custo 2024", format="R$ %.2f"),
+        "Diferença": st.column_config.NumberColumn("Diferença", format="R$ %.2f")
+    }, use_container_width=True, hide_index=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # GRÁFICOS
     g1, g2 = st.columns([1, 1.2])
     with g1:
         st.subheader("Perda por Divisional")
@@ -170,59 +154,27 @@ try:
             fig_t.update_traces(textinfo="label+value")
             st.plotly_chart(fig_t, use_container_width=True)
 
-   # --- TABELA FINAL ---
+    # TABELA DETALHADA
     st.subheader("📋 Detalhamento por Unidade")
     df_tab = df_filt.copy()
-    
-    # 1. TRATAMENTO PESADO DE NULOS NO FATURAMENTO
-    # Converte para string, limpa espaços, remove R$, converte para número e o que sobrar de vazio vira 0
-    df_tab['v_fat'] = pd.to_numeric(
-        df_tab['v_fat'].astype(str).str.replace('R$', '', regex=False).str.strip(), 
-        errors='coerce'
-    ).fillna(0.0)
-    
-    # 2. CÁLCULO DO % (Agora com garantia de que v_fat nunca é 'vazio' técnico)
-    # Se faturamento for 0, o resultado será 0 em vez de vazio
-    df_tab['% Perda'] = df_tab.apply(
-        lambda x: (x['v_1c'] / x['v_fat'] * 100) if x['v_fat'] != 0 else 0.0, 
-        axis=1
-    ).fillna(0.0)
-    
-    # 3. Limpeza do CD e Seleção de colunas
+    df_tab['v_fat'] = pd.to_numeric(df_tab['v_fat'].astype(str).str.replace('R$', '', regex=False).str.strip(), errors='coerce').fillna(0.0)
+    df_tab['% Perda'] = df_tab.apply(lambda x: (x['v_1c'] / x['v_fat'] * 100) if x['v_fat'] != 0 else 0.0, axis=1).fillna(0.0)
     df_tab['cd'] = df_tab['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
-    colunas_show = ['semestre', 'tipo_clean', 'divisional', 'cd', 'local', 'v_1c', '% Perda', 'v_falta', 'is_finalizado']
-    df_exibir = df_tab[colunas_show]
+    df_exibir = df_tab[['semestre', 'tipo_clean', 'divisional', 'cd', 'local', 'v_1c', '% Perda', 'v_falta', 'is_finalizado']]
 
-    # 4. FUNÇÃO DE ESTILIZAÇÃO
     def style_performance(row):
-        styles = [''] * len(row)
-        v1c = row['v_1c']
-        
-        # Cores para Dark Mode (Vermelho/Verde)
-        if v1c < 0:
-            bg = 'background-color: #641e1e; color: #ff9999; font-weight: bold;'
-        else:
-            bg = 'background-color: #1e4620; color: #99ff99; font-weight: bold;'
-
-        # Pintar colunas financeiras e Falta Vol
-        for col_name in ['v_1c', '% Perda', 'v_falta']:
-            if col_name in row.index:
-                styles[row.index.get_loc(col_name)] = bg
+        styles = [''] * len(row); v1c = row['v_1c']
+        bg = 'background-color: #641e1e; color: #ff9999; font-weight: bold;' if v1c < 0 else 'background-color: #1e4620; color: #99ff99; font-weight: bold;'
+        for col in ['v_1c', '% Perda', 'v_falta']: styles[row.index.get_loc(col)] = bg
         return styles
 
-    # 5. EXIBIÇÃO
-    st.dataframe(
-        df_exibir.style.apply(style_performance, axis=1),
-        column_config={
-            "v_1c": st.column_config.NumberColumn("Resultado 1C", format="R$ %.2f"),
-            "% Perda": st.column_config.NumberColumn("% Perda", format="%.4f%%"),
-            "v_falta": st.column_config.NumberColumn("Falta Vol", format="%.0f"),
-            "is_finalizado": st.column_config.CheckboxColumn("Fim?"),
-            "tipo_clean": "Tipo", "cd": "CD", "local": "Unidade"
-        },
-        use_container_width=True,
-        hide_index=True
-    )
+    st.dataframe(df_exibir.style.apply(style_performance, axis=1), column_config={
+        "v_1c": st.column_config.NumberColumn("Resultado 1C", format="R$ %.2f"),
+        "% Perda": st.column_config.NumberColumn("% Perda", format="%.4f%%"),
+        "v_falta": st.column_config.NumberColumn("Falta Vol", format="%.0f"),
+        "is_finalizado": st.column_config.CheckboxColumn("Fim?"),
+        "tipo_clean": "Tipo", "cd": "CD", "local": "Unidade"
+    }, use_container_width=True, hide_index=True)
 
 except Exception as e:
     st.error(f"⚠️ Erro ao carregar dados: {e}")
