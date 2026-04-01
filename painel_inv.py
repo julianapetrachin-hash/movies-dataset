@@ -136,7 +136,7 @@ try:
     g1, g2 = st.columns([1, 1.1])
     
     with g1:
-        st.subheader("📊 Resultado Consolidado (1C + Falta)")
+        st.subheader("📊 Resultado Consolidado (1C + Falta Vol)")
         df_proc = df_filt.copy()
         df_proc['res_total'] = df_proc['v_1c'] + df_proc['v_falta']
         df_plot = df_proc.groupby('tipo_clean')['res_total'].sum().reset_index()
