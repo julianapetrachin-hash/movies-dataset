@@ -6,7 +6,7 @@ import re
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(layout="wide", page_title="Magalog | BI Executive", page_icon="📊")
 
-# --- ESTILO CSS ---
+# --- CSS EXECUTIVO ---
 st.markdown("""
     <style>
     [data-testid="stHeader"] { display: none; }
@@ -20,14 +20,13 @@ st.markdown("""
     .header-title { color: white !important; font-size: 24px !important; font-weight: 800 !important; }
     .card-kpi {
         background: #1c222d; border: 1px solid #313d4f; border-radius: 10px;
-        padding: 15px; text-align: center; border-top: 3px solid #00d2ff;
+        padding: 15px; text-align: center; border-top: 3px solid #00d2ff; min-height: 100px;
     }
-    .value-kpi { color: white; font-size: 22px; font-weight: 900; margin: 0; }
+    .value-kpi { color: white; font-size: 20px; font-weight: 900; margin: 0; }
     .label-kpi { color: #8b949e; font-size: 11px; text-transform: uppercase; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- FUNÇÃO DE LIMPEZA ---
 def limpar_universal(v):
     if pd.isna(v) or str(v).strip() in ["", "-", "nan", "#DIV/0!", "None"]: return 0.0
     s = str(v).replace('R$', '').replace('%', '').replace(' ', '')
@@ -41,113 +40,98 @@ def limpar_universal(v):
 def load_data():
     url = "https://docs.google.com/spreadsheets/d/1iaHnigQGOH5w4xFlZXN0cXYSZlLqPuHE1Pdsgy0XSdI/export?format=csv&gid=1358149674"
     df = pd.read_csv(url).dropna(how='all')
-    # Normaliza nomes de colunas: tudo minusculo, sem espaços, sem acentos
-    df.columns = [re.sub(r'[^a-z0-9]', '_', str(c).strip().lower()) for c in df.columns]
+    # Mantemos os nomes originais para os gráficos, mas criamos uma versão limpa para busca técnica
     return df
 
 try:
     df_raw = load_data().copy()
     
-    # --- MAPEAMENTO DINÂMICO DE COLUNAS ---
-    # Tenta encontrar as colunas mesmo que o nome mude levemente
-    col_tipo = next((c for c in df_raw.columns if 'tipo' in c), None)
-    col_cd = next((c for c in df_raw.columns if 'cd' in c and len(c) < 5), None)
-    col_div = next((c for c in df_raw.columns if 'divisional' in c or 'gerente' in c or 'regional' in c), None)
-    
-    c_1c = next((c for c in df_raw.columns if '1' in c and 'ciclo' in c), None)
-    c_falta = next((c for c in df_raw.columns if 'falta' in c and 'vol' in c), None)
-    c_fat = next((c for c in df_raw.columns if 'faturamento' in c or 'fat' in c), None)
+    # Identificação Dinâmica de Colunas Financeiras
+    c_1c = next((c for c in df_raw.columns if '1' in c and 'Ciclo' in c), df_raw.columns[0])
+    c_falta = next((c for c in df_raw.columns if 'Falta' in c and 'Vol' in c), df_raw.columns[0])
+    c_fat = next((c for c in df_raw.columns if 'Faturamento' in c or 'Fat' in c), df_raw.columns[0])
+    col_tipo = next((c for c in df_raw.columns if 'Tipo' in c), 'Tipo')
+    col_cd = next((c for c in df_raw.columns if 'CD' in c and len(c) < 5), 'CD')
+    col_div = next((c for c in df_raw.columns if 'Divisional' in c or 'Gerente' in c), 'Divisional')
 
-    # Conversão de Valores
-    df_raw['v_1c'] = df_raw[c_1c].apply(limpar_universal).astype(float) if c_1c else 0.0
-    df_raw['v_falta'] = df_raw[c_falta].apply(limpar_universal).astype(float) if c_falta else 0.0
-    df_raw['v_fat'] = df_raw[c_fat].apply(limpar_universal).astype(float) if c_fat else 0.0
+    # Conversão de Dados
+    df_raw['v_1c'] = df_raw[c_1c].apply(limpar_universal)
+    df_raw['v_falta'] = df_raw[c_falta].apply(limpar_universal)
+    df_raw['v_fat'] = df_raw[c_fat].apply(limpar_universal)
+    df_raw['total_perda'] = df_raw['v_1c'] + df_raw['v_falta']
     
-    # Tratamento de Strings para os Filtros
-    df_raw['f_tipo'] = df_raw[col_tipo].fillna('OUTROS').astype(str).str.upper() if col_tipo else 'OUTROS'
-    df_raw['f_cd'] = df_raw[col_cd].fillna('N/A').astype(str).str.replace(r'\.0$', '', regex=True) if col_cd else 'N/A'
-    df_raw['f_gerente'] = df_raw[col_div].fillna('N/A').astype(str).str.upper() if col_div else 'N/A'
-
-    # --- BARRA LATERAL (FILTROS) ---
+    # --- SIDEBAR COM FILTROS ---
     with st.sidebar:
-        st.header("⚙️ Painel de Controle")
-        
-        if st.button("🔄 Sincronizar Google Sheets"):
+        st.title("⚙️ Configurações")
+        if st.button("🔄 Atualizar e Sincronizar"):
             st.cache_data.clear()
             st.rerun()
         
         st.divider()
-        
-        # Filtros Multiselect
-        lista_tipos = sorted(df_raw['f_tipo'].unique())
-        sel_tipos = st.multiselect("Filtrar por Tipo:", options=lista_tipos, default=[])
-        
-        lista_cds = sorted(df_raw['f_cd'].unique())
-        sel_cds = st.multiselect("Filtrar por CD:", options=lista_cds, default=[])
-        
-        lista_gerentes = sorted(df_raw['f_gerente'].unique())
-        sel_gerentes = st.multiselect("Filtrar por Gerente/Divisional:", options=lista_gerentes, default=[])
+        f_tipo = st.multiselect("Filtrar Tipo:", options=sorted(df_raw[col_tipo].dropna().unique()))
+        f_cd = st.multiselect("Filtrar CD:", options=sorted(df_raw[col_cd].astype(str).unique()))
+        f_ger = st.multiselect("Filtrar Gerente:", options=sorted(df_raw[col_div].dropna().unique()) if col_div in df_raw.columns else [])
 
-    # --- LÓGICA DE FILTRAGEM ---
+    # Aplicação dos Filtros
     df_filt = df_raw.copy()
-    if sel_tipos:
-        df_filt = df_filt[df_filt['f_tipo'].isin(sel_tipos)]
-    if sel_cds:
-        df_filt = df_filt[df_filt['f_cd'].isin(sel_cds)]
-    if sel_gerentes:
-        df_filt = df_filt[df_filt['f_gerente'].isin(sel_gerentes)]
+    if f_tipo: df_filt = df_filt[df_filt[col_tipo].isin(f_tipo)]
+    if f_cd: df_filt = df_filt[df_filt[col_cd].astype(str).isin(f_cd)]
+    if f_ger: df_filt = df_filt[df_filt[col_div].isin(f_ger)]
 
-    # --- EXIBIÇÃO DASHBOARD ---
-    st.markdown('<div class="header-box"><p class="header-title">📊 DASHBOARD EXECUTIVO MAGALOG 2026</p></div>', unsafe_allow_html=True)
+    # --- CABEÇALHO ---
+    st.markdown('<div class="header-box"><p class="header-title">📊 DASHBOARD ESTRATÉGICO MAGALOG 2026</p></div>', unsafe_allow_html=True)
     
-    # KPIs
-    v_perda_total = df_filt['v_1c'].sum() + df_filt['v_falta'].sum()
-    fat_soma = df_filt['v_fat'].sum()
-    perc_p = (abs(v_perda_total) / fat_soma * 100) if fat_soma > 0 else 0.0
-
-    k1, k2, k3, k4 = st.columns(4)
-    with k1: st.markdown(f'<div class="card-kpi"><p class="label-kpi">Perda Total</p><p class="value-kpi">R$ {v_perda_total:,.0f}</p></div>', unsafe_allow_html=True)
+    # --- CARDS KPI (RESTAURADOS) ---
+    k1, k2, k3, k4, k5 = st.columns(5)
+    fat_total = df_filt['v_fat'].sum()
+    perda_total = df_filt['total_perda'].sum()
+    
+    with k1: st.markdown(f'<div class="card-kpi"><p class="label-kpi">Perda Total</p><p class="value-kpi">R$ {perda_total:,.0f}</p></div>', unsafe_allow_html=True)
     with k2: st.markdown(f'<div class="card-kpi"><p class="label-kpi">1º Ciclo</p><p class="value-kpi">R$ {df_filt["v_1c"].sum():,.0f}</p></div>', unsafe_allow_html=True)
     with k3: st.markdown(f'<div class="card-kpi"><p class="label-kpi">Falta Vol</p><p class="value-kpi">R$ {df_filt["v_falta"].sum():,.0f}</p></div>', unsafe_allow_html=True)
-    with k4: st.markdown(f'<div class="card-kpi"><p class="label-kpi">% Perda s/ Fat</p><p class="value-kpi">{perc_p:.3f}%</p></div>', unsafe_allow_html=True)
+    with k4: st.markdown(f'<div class="card-kpi"><p class="label-kpi">% Perda / Fat</p><p class="value-kpi">{(abs(perda_total)/fat_total*100 if fat_total>0 else 0):.3f}%</p></div>', unsafe_allow_html=True)
+    with k5: 
+        saude = "Saudável" if (abs(perda_total)/fat_total if fat_total>0 else 0) < 0.01 else "Atenção"
+        st.markdown(f'<div class="card-kpi"><p class="label-kpi">Status Saúde</p><p class="value-kpi">{saude}</p></div>', unsafe_allow_html=True)
 
-    st.write("") # Espaçador
+    # --- GRÁFICOS (CD, DQS, LV E ACUMULADO) ---
+    st.write("### 📈 Análise de Processos e Acumulados")
+    c1, c2, c3 = st.columns(3)
+    
+    with c1:
+        # Gráfico por Tipo (Processo)
+        df_proc = df_filt.groupby(col_tipo)['total_perda'].sum().reset_index()
+        fig_proc = px.bar(df_proc, x=col_tipo, y='total_perda', title="Perdas por Processo (CD, LV, DQS)", 
+                          color=col_tipo, color_discrete_map={'CD':'#1e3c72', 'LV':'#00d2ff', 'DQS':'#ff4b4b'})
+        st.plotly_chart(fig_proc, use_container_width=True)
 
-    # Gráficos
-    g1, g2 = st.columns([1, 1])
-    with g1:
-        df_g = df_filt.groupby('f_tipo')[['v_1c', 'v_falta']].sum().sum(axis=1).reset_index(name='total')
-        fig = px.pie(df_g, names='f_tipo', values='total', hole=0.4, title="Distribuição por Tipo",
-                     color_discrete_sequence=px.colors.qualitative.Pastel)
-        fig.update_layout(template="plotly_dark", showlegend=True)
-        st.plotly_chart(fig, use_container_width=True)
+    with c2:
+        # Perdas por Gerente (Divisional)
+        df_gerente = df_filt.groupby(col_div)['total_perda'].sum().reset_index().sort_values('total_perda', ascending=True)
+        fig_ger = px.bar(df_gerente, y=col_div, x='total_perda', orientation='h', title="Perdas por Gerente", color_discrete_sequence=['#00d2ff'])
+        st.plotly_chart(fig_ger, use_container_width=True)
 
-    with g2:
-        df_g2 = df_filt.groupby('f_cd')[['v_1c', 'v_falta']].sum().sum(axis=1).reset_index(name='total').sort_values('total', ascending=False).head(10)
-        fig2 = px.bar(df_g2, x='f_cd', y='total', title="Top 10 CDs (Perda)", text_auto='.2s')
-        fig2.update_layout(template="plotly_dark")
-        st.plotly_chart(fig2, use_container_width=True)
+    with c3:
+        # Top CDs com maior impacto
+        df_top_cd = df_filt.groupby(col_cd)['total_perda'].sum().reset_index().sort_values('total_perda', ascending=True).head(10)
+        fig_cd = px.bar(df_top_cd, x=col_cd, y='total_perda', title="Top 10 CDs Críticos", color_discrete_sequence=['#ff4b4b'])
+        st.plotly_chart(fig_cd, use_container_width=True)
 
-    # Tabela Detalhada
+    # --- TABELA DE DETALHAMENTO ---
     st.markdown("### 📋 Detalhamento das Unidades")
     
-    # Função para colorir valores negativos/positivos na tabela
-    def colorir_valor(val):
+    def style_negative(val):
         try:
-            num = float(val)
-            color = '#ff4b4b' if num < 0 else '#00ffcc' if num > 0 else 'white'
-            return f'color: {color}'
+            return 'color: #ff4b4b' if float(val) < 0 else 'color: #00ffcc'
         except: return ''
 
-    df_final = df_filt[['f_tipo', 'f_cd', 'v_1c', 'v_falta', 'f_gerente']].copy()
-    df_final.columns = ['Tipo', 'CD', '1º Ciclo', 'Falta Vol', 'Responsável']
+    df_display = df_filt[[col_tipo, col_cd, c_1c, c_falta, col_div]].copy()
     
     st.dataframe(
-        df_final.style.map(colorir_valor, subset=['1º Ciclo', 'Falta Vol'])
-        .format({'1º Ciclo': 'R$ {:,.2f}', 'Falta Vol': 'R$ {:,.2f}'}),
+        df_display.style.map(style_negative, subset=[c_1c, c_falta]),
         use_container_width=True, hide_index=True
     )
 
 except Exception as e:
-    st.error(f"Aguardando dados ou erro na leitura: {e}")
-    st.info("Dica: Verifique se as colunas da sua planilha contêm os termos 'tipo', 'cd' e '1 ciclo'.")
+    st.error(f"Erro na execução do dashboard: {e}")
+    st.info("Certifique-se de que a planilha do Google não teve colunas renomeadas.")
