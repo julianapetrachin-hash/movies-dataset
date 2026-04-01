@@ -203,15 +203,15 @@ try:
 
         st.markdown(html_final, unsafe_allow_html=True)
         
-    with c5:
-        pf = (fechadas/total_uds*100) if total_uds > 0 else 0
-        st.markdown(f'''<div class="card-kpi" style="min-height: 180px;"><div class="label-kpi">Finalizadas</div><div class="target-container"><div class="target-fill" style="width:{pf}%;"></div><div class="target-line" style="left:{target_pos}%;"></div><div class="target-text">{fechadas}</div></div>
-        <div style="display:flex;justify-content:space-between;"><span class="target-label">0</span><span class="target-label">target</span><span class="target-label">{total_uds}</span></div></div>''', unsafe_allow_html=True)
+  ##  with c5:
+    ##      pf = (fechadas/total_uds*100) if total_uds > 0 else 0
+ ## st.markdown(f'''<div class="card-kpi" style="min-height: 180px;"><div class="label-kpi">Finalizadas</div><div class="target-container"><div class="target-fill" style="width:{pf}%;"></div><div class="target-line" style="left:{target_pos}%;"></div><div class="target-text">{fechadas}</div></div>
+       ##   <div style="display:flex;justify-content:space-between;"><span class="target-label">0</span><span class="target-label">target</span><span class="target-label">{total_uds}</span></div></div>''', unsafe_allow_html=True)
         
-    with c6:
-        pp = (pendentes/total_uds*100) if total_uds > 0 else 0
-        st.markdown(f'''<div class="card-kpi" style="min-height: 180px;"><div class="label-kpi">Pendentes</div><div class="target-container" style="background:#2a1b1b;"><div class="target-fill" style="width:{pp}%;background:#ff4b4b;"></div><div class="target-line" style="left:{target_pos}%;background:#ff4b4b;"></div><div class="target-text">{pendentes}</div></div>
-        <div style="display:flex;justify-content:space-between;"><span class="target-label">0</span><span class="target-label">target</span><span class="target-label">{total_uds}</span></div></div>''', unsafe_allow_html=True)
+    ##  with c6:
+       ##   pp = (pendentes/total_uds*100) if total_uds > 0 else 0
+        ##  st.markdown(f'''<div class="card-kpi" style="min-height: 180px;"><div class="label-kpi">Pendentes</div><div class="target-container" style="background:#2a1b1b;"><div class="target-fill" style="width:{pp}%;background:#ff4b4b;"></div><div class="target-line" style="left:{target_pos}%;background:#ff4b4b;"></div><div class="target-text">{pendentes}</div></div>
+        ##  <div style="display:flex;justify-content:space-between;"><span class="target-label">0</span><span class="target-label">target</span><span class="target-label">{total_uds}</span></div></div>''', unsafe_allow_html=True)
 
     # --- GRÁFICOS DO MEIO ---
     st.markdown("<br>", unsafe_allow_html=True)
