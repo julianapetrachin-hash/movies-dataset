@@ -110,7 +110,7 @@ try:
     with k3: st.markdown(f'<div class="card-neon"><div class="label-neon">Volume Falta</div><div class="value-neon">{int(vfal):,}</div><div class="sub-neon">Itens Pendentes</div></div>', unsafe_allow_html=True)
     with k4: st.markdown(f'<div class="card-neon"><div class="label-neon">Evolução</div><div class="value-neon">{concl:.1f}%</div><div class="p-bar-bg"><div class="p-bar-fill" style="width:{concl}%"></div></div></div>', unsafe_allow_html=True)
 
-  # --- SEÇÃO 1: GRÁFICOS DO MEIO (BARRAS NA ESQUERDA + TREEMAP NA DIREITA) ---
+   # --- SEÇÃO 1: GRÁFICOS DO MEIO (BARRAS NA ESQUERDA + TREEMAP NA DIREITA) ---
     st.markdown("<br>", unsafe_allow_html=True)
     
     # Criamos as colunas e atribuímos explicitamente
@@ -209,3 +209,6 @@ try:
             legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
         )
         st.plotly_chart(fig_p, use_container_width=True)
+
+except Exception as e:
+    st.error(f"Erro: {e}")
