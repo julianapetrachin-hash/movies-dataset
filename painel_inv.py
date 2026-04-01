@@ -139,7 +139,7 @@ try:
         st.markdown(f'<div class="metric-card"><div class="metric-label">Perda Consolidada</div><div class="metric-value">R$ {perda_consolidada:,.2f}</div><div style="color:#8b949e; font-size:12px;">1º Ciclo: R$ {perda_1c:,.2f}<br>Falta Vol: {falta_vol:,.0f}</div></div>', unsafe_allow_html=True)
 
     with col_c2:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">% Perda Global</div><div class="metric-value">{perc_global:.3f}%</div><div style="color:#8b949e; font-size:12px;">Sobre faturamento total</div></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="metric-card"><div class="metric-label">% Perda Geral</div><div class="metric-value">{perc_global:.3f}%</div><div style="color:#8b949e; font-size:12px;">Sobre faturamento total</div></div>', unsafe_allow_html=True)
 
     with col_c3:
         st.markdown(f'<div class="metric-card"><div class="metric-label">Evolução</div><div class="metric-value">{int(finalizados)}/{total_un} <span style="font-size:13px; color:#58a6ff;">({perc_conclusao:.1f}%)</span></div><div style="color:#8b949e; font-size:12px;">Pendentes 1S: {pend_1s}<br>Total Pendentes: {total_pendentes}</div><div class="progress-container"><div class="progress-bar" style="width: {perc_conclusao}%"></div></div></div>', unsafe_allow_html=True)
@@ -202,33 +202,59 @@ try:
             st.plotly_chart(fig_t, use_container_width=True)
 
    # --- PREPARAÇÃO DA TABELA FINAL ---
+    # --- PREPARAÇÃO DA TABELA FINAL ---
     st.subheader("📋 Detalhamento por Unidade")
 
-    # 1. Criamos uma cópia para não afetar os cálculos globais
     df_tab = df_filt.copy()
 
-    # 2. Cálculo do % de Perda por Unidade (v_1c sobre faturamento da unidade)
-    # Usamos abs() na perda para o cálculo de participação se desejar, 
-    # mas aqui faremos a relação direta: (Resultado / Faturamento)
+    # 1. Cálculo do % de Perda por Unidade
     df_tab['% Perda'] = (df_tab['v_1c'] / df_tab['v_fat'] * 100).fillna(0)
 
-    # 3. Limpeza visual do CD (removendo .0)
+    # 2. Limpeza do CD (removendo .0)
     df_tab['cd'] = df_tab['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
 
-    # 4. Seleção e Reordem das colunas para exibição
+    # 3. Seleção de colunas
     colunas_show = ['semestre', 'tipo_clean', 'divisional', 'cd', 'local', 'v_1c', '% Perda', 'v_falta', 'is_finalizado']
     df_exibir = df_tab[colunas_show]
 
-    # 5. Função de Estilização (Mapa de Calor)
-    def style_v1c(v):
-        # Se o resultado for negativo (perda), fundo avermelhado
-        if v < 0:
-            return 'background-color: #451a1a; color: #ff8888; font-weight: bold;'
-        # Se for zero ou positivo (sem perda), fundo esverdeado
-        elif v >= 0:
-            return 'background-color: #1a4523; color: #88ff88;'
-        return ''
+    # 4. FUNÇÃO DE ESTILIZAÇÃO COM ALTO CONTRASTE
+    def style_performance(row):
+        styles = [''] * len(row)
+        v1c = row['v_1c']
+        
+        # Cores mais claras e vibrantes para leitura no Dark Mode
+        # Vermelho vivo para Perdas | Verde limão para Bom Resultado
+        if v1c < 0:
+            bg_color = '#641e1e' # Vermelho escuro mas saturado
+            text_color = '#ff9999' # Rosa/Vermelho claro para leitura
+        else:
+            bg_color = '#1e4620' # Verde floresta
+            text_color = '#99ff99' # Verde limão claro
 
+        # Aplicamos o estilo apenas nas colunas de interesse
+        idx_v1c = row.index.get_loc('v_1c')
+        idx_perda = row.index.get_loc('% Perda')
+        
+        styles[idx_v1c] = f'background-color: {bg_color}; color: {text_color}; font-weight: bold;'
+        styles[idx_perda] = f'background-color: {bg_color}; color: {text_color}; font-weight: bold;'
+        
+        return styles
+
+    # 5. EXIBIÇÃO DA TABELA
+    st.dataframe(
+        df_exibir.style.apply(style_performance, axis=1),
+        column_config={
+            "v_1c": st.column_config.NumberColumn("Resultado 1C", format="R$ %.2f", help="Valores negativos indicam perda."),
+            "% Perda": st.column_config.NumberColumn("% Perda", format="%.3f%%"),
+            "v_falta": st.column_config.NumberColumn("Falta Vol", format="%.0f"),
+            "is_finalizado": st.column_config.CheckboxColumn("Fim?"),
+            "tipo_clean": "Tipo",
+            "cd": "CD",
+            "local": "Unidade"
+        },
+        use_container_width=True,
+        hide_index=True
+    )
     # Aplicando a estilização
     st.dataframe(
         df_exibir.style.map(style_v1c, subset=['v_1c', '% Perda']),
