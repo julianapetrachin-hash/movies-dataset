@@ -16,7 +16,7 @@ st.markdown("""
     .header-box {
         background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%) !important;
         padding: 2rem !important; border-radius: 0 0 15px 15px; text-align: center;
-        margin-bottom: 25rem !important; box-shadow: 0 4px 15px rgba(0, 210, 255, 0.4);
+        margin-bottom: 2rem !important; box-shadow: 0 4px 15px rgba(0, 210, 255, 0.4);
     }
     .header-title { color: white !important; font-size: 24px !important; font-weight: 800 !important; margin:0; }
     .card-kpi {
