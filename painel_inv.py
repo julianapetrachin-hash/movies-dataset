@@ -183,6 +183,12 @@ try:
     # Trocamos "justify-content: center" por "flex-start" para alinhar os títulos no topo!
     estilo_card = "height: 175px; padding: 15px 10px; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; box-sizing: border-box;"
 
+    # 4 CARDS KPI 
+    c1, c2, c3, c4 = st.columns(4)
+    
+    # Altura corrigida para 195px para caber a tabela inteira dentro da borda
+    estilo_card = "height: 195px; padding: 15px 10px; display: flex; flex-direction: column; justify-content: flex-start; align-items: center; box-sizing: border-box;"
+
     with c1: 
         st.markdown(f'''
         <div class="card-kpi" style="{estilo_card}">
