@@ -6,31 +6,42 @@ import re
 # 1. CONFIGURAÇÃO DA PÁGINA
 st.set_page_config(layout="wide", page_title="Magalog | BI Executive", page_icon="📊")
 
-# --- ESTILIZAÇÃO CSS (Título Ajustado + Gráficos Flutuantes) ---
+# --- CSS REFINADO (Ajuste de Posição e Títulos) ---
 st.markdown("""
     <style>
+    /* Forçar o app a começar do topo absoluto */
     [data-testid="stAppViewContainer"] { background-color: #0d1117 !important; }
-    .main { padding: 0rem !important; }
+    .block-container { padding-top: 0rem !important; padding-bottom: 0rem !important; }
     
-    /* Header Ajustado para Cima */
+    /* Header no topo absoluto */
     .header-box {
         background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%) !important;
-        padding: 0.8rem !important; /* Reduzido de 1.5rem */
+        padding: 0.6rem !important;
         border-radius: 0 0 15px 15px; 
         text-align: center;
-        margin-bottom: 1rem !important; /* Reduzido para o título subir */
+        margin-top: -10px !important; /* Puxa o título para cima */
+        margin-bottom: 1.5rem !important;
         box-shadow: 0 4px 20px rgba(0, 210, 255, 0.3);
     }
-    .header-title { color: white !important; font-size: 24px !important; font-weight: 800 !important; margin:0; }
+    .header-title { color: white !important; font-size: 22px !important; font-weight: 800 !important; margin:0; }
 
-    /* EFEITO FLUTUANTE EXECUTIVO */
+    /* Estilo dos Títulos dos Gráficos para não serem encobertos */
+    .section-title {
+        color: #8b949e;
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        padding-left: 5px;
+        border-left: 3px solid #00d2ff;
+    }
+
+    /* Cards e Gráficos Flutuantes */
     .stPlotlyChart, div[data-testid="stDataFrame"], .card-kpi {
         background-color: #161b22 !important;
         padding: 15px !important;
         border-radius: 15px !important;
         border: 1px solid #30363d !important;
         box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
-        margin-bottom: 12px !important;
     }
 
     .card-kpi {
@@ -133,9 +144,8 @@ try:
     g1, g2 = st.columns([1, 1.1])
     
     with g1:
-        st.subheader("📊 Resultado Consolidado (1C + Falta)")
+        st.markdown('<p class="section-title">📊 Resultado Consolidado (1C + Falta)</p>', unsafe_allow_html=True)
         df_proc = df_filt.copy(); df_proc['res_total'] = df_proc['v_1c'] + df_proc['v_falta']
-        # Agrupar e filtrar apenas tipos que existem nos dados atuais para evitar barras vazias
         df_p = df_proc.groupby('tipo_clean')['res_total'].sum().reset_index()
         df_p = df_p[df_p['res_total'] != 0] 
         
@@ -148,19 +158,19 @@ try:
         st.plotly_chart(fig_b, use_container_width=True)
 
     with g2:
-        st.subheader("🏢 Status de Saúde (Apenas 1º Ciclo)")
+        st.markdown('<p class="section-title">🏢 Status de Saúde (Apenas 1º Ciclo)</p>', unsafe_allow_html=True)
         df_tree = df_filt[df_filt['v_1c'] != 0].copy()
         df_tree['cd_lbl'] = df_tree['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
         fig_t = px.treemap(df_tree, path=['tipo_clean', 'cd_lbl'], values=df_tree['v_1c'].abs(), color='tipo_clean', 
                            color_discrete_map={'CD':'#0040ff','LV':'#aa00ff','DQS':'#00d2ff'})
         fig_t.update_traces(textinfo="label+value", texttemplate="<b>%{label}</b><br>R$ %{value:,.0f}")
-        fig_t.update_layout(template="plotly_dark", height=380, margin=dict(t=20, b=10, l=0, r=0))
+        fig_t.update_layout(template="plotly_dark", height=380, margin=dict(t=0, b=10, l=0, r=0))
         st.plotly_chart(fig_t, use_container_width=True)
 
     # --- BASE (TABELA + PIZZA) ---
     b1, b2 = st.columns([3, 1.2])
     with b1:
-        st.subheader("📋 Detalhamento")
+        st.markdown('<p class="section-title">📋 Detalhamento Operacional</p>', unsafe_allow_html=True)
         df_tab = df_filt.copy()
         df_tab['%'] = (df_tab['v_1c'] / df_tab['v_fat'] * 100).fillna(0)
         df_tab['cd_t'] = df_tab['cd'].astype(str).str.replace(r'\.0$', '', regex=True)
@@ -169,10 +179,10 @@ try:
                      column_config={"v_1c": st.column_config.NumberColumn("Resultado", format="R$ %.2f"), "%": st.column_config.NumberColumn("%", format="%.4f%%"), "v_falta": st.column_config.NumberColumn("Falta", format="%.0f")},
                      use_container_width=True, hide_index=True, height="content")
     with b2:
-        st.subheader("📍 Perda / Gerente")
+        st.markdown('<p class="section-title">📍 Perda / Gerente</p>', unsafe_allow_html=True)
         df_pi = df_filt[df_filt['divisional'] != "Indefinido"]
         fig_pi = px.pie(df_pi, values=df_pi['v_1c'].abs(), names='divisional', hole=0.7, color_discrete_sequence=["#00d2ff", "#008cff", "#0040ff", "#3a7bd5"])
-        fig_pi.update_layout(template="plotly_dark", height=450, margin=dict(t=50, b=50, l=0, r=0), showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
+        fig_pi.update_layout(template="plotly_dark", height=450, margin=dict(t=30, b=50, l=0, r=0), showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
         st.plotly_chart(fig_pi, use_container_width=True)
 
 except Exception as e:
