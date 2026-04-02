@@ -190,6 +190,12 @@ try:
     # Altura elegante de 150px e conteúdo perfeitamente centralizado no meio!
     estilo_card = "height: 150px; padding: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;"
 
+   # --- 5 CARDS KPI ---
+    c1, c2, c3, c4, c5 = st.columns(5)
+    
+    # Altura elegante de 150px e conteúdo perfeitamente centralizado no meio!
+    estilo_card = "height: 150px; padding: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;"
+
     with c1: 
         st.markdown(f'''
         <div class="card-kpi" style="{estilo_card}">
@@ -224,7 +230,6 @@ try:
         ''', unsafe_allow_html=True)
         
     with c4: 
-        # Card 4 agora fica focado apenas no total (limpo e direto)
         perc_finalizadas = (fechadas / total_uds * 100) if total_uds > 0 else 0
         st.markdown(f'''
         <div class="card-kpi" style="{estilo_card}">
@@ -237,7 +242,6 @@ try:
         ''', unsafe_allow_html=True)
 
     with c5: 
-        # Card 5 exclusivo para a tabela
         df_validos = df_filt[df_filt['tipo_clean'].str.strip() != '']
         resumo_tipos = df_validos.groupby('tipo_clean').agg(
             Total=('tipo_clean', 'count'),
@@ -245,12 +249,13 @@ try:
         ).reset_index()
         resumo_tipos['Pen'] = resumo_tipos['Total'] - resumo_tipos['Fim']
 
-        # Demos um respiro maior no padding da tabela já que ela tem seu próprio espaço agora
         linhas_html = ""
         for _, row in resumo_tipos.iterrows():
-            linhas_html += f"<tr><td style='text-align:left; color:#8b949e; padding:2px 0;'>{row['tipo_clean']}</td><td style='color:#f0f6fc; text-align:center; padding:2px 0;'>{row['Total']}</td><td style='color:#3fb950; text-align:center; padding:2px 0;'>{row['Fim']}</td><td style='color:#ff4b4b; text-align:center; padding:2px 0;'>{row['Pen']}</td></tr>"
+            # Adicionado um pouco de padding lateral (2px) para os números não grudarem
+            linhas_html += f"<tr><td style='text-align:left; color:#8b949e; padding:2px;'>{row['tipo_clean']}</td><td style='color:#f0f6fc; text-align:center; padding:2px;'>{row['Total']}</td><td style='color:#3fb950; text-align:center; padding:2px;'>{row['Fim']}</td><td style='color:#ff4b4b; text-align:center; padding:2px;'>{row['Pen']}</td></tr>"
 
-        tabela_html = f"<table style='width:100%; font-size:11px; margin-top:0px; border-top:1px solid #30363d; padding-top:4px; border-collapse: collapse;'><thead><tr style='color:#8b949e; text-transform:uppercase; border-bottom:1px solid #30363d;'><th style='text-align:left; padding-bottom:4px;'>Tipo</th><th style='text-align:center; padding-bottom:4px;'>Tot</th><th style='text-align:center; padding-bottom:4px;'>Fim</th><th style='text-align:center; padding-bottom:4px;'>Pen</th></tr></thead><tbody>{linhas_html}</tbody></table>"
+        # Adicionado "table-layout: fixed;" e ajustado o tamanho da fonte para 10.5px
+        tabela_html = f"<table style='width:100%; table-layout: fixed; font-size:10.5px; margin-top:0px; border-top:1px solid #30363d; padding-top:4px; border-collapse: collapse;'><thead><tr style='color:#8b949e; text-transform:uppercase; border-bottom:1px solid #30363d;'><th style='text-align:left; padding-bottom:4px; padding-left:2px;'>Tipo</th><th style='text-align:center; padding-bottom:4px;'>Tot</th><th style='text-align:center; padding-bottom:4px;'>Fim</th><th style='text-align:center; padding-bottom:4px; padding-right:2px;'>Pen</th></tr></thead><tbody>{linhas_html}</tbody></table>"
         
         html_final = f"""<div class="card-kpi" style="{estilo_card}">
             <div style="width: 100%;">
