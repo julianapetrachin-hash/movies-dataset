@@ -9,14 +9,15 @@ st.set_page_config(layout="wide", page_title="Prevenção | BI Executive", page_
 # --- ESTILIZAÇÃO CSS (Big Numbers + 6 Cards) ---
 # --- ESTILIZAÇÃO CSS (Big Numbers + Cards) ---
 # --- ESTILIZAÇÃO CSS (Big Numbers + Cards) ---
+# --- ESTILIZAÇÃO CSS (Big Numbers + Cards) ---
 st.markdown("""
     <style>
     [data-testid="stAppViewContainer"] { background-color: #0d1117 !important; }
     .main { padding: 0rem !important; }
     
-    /* --- AQUI ESTÁ A MÁGICA PARA O TOPO DA PÁGINA --- */
+    /* --- AQUI ESTÁ O AJUSTE FINO DO TOPO --- */
     .block-container {
-        padding-top: 1rem !important; /* Troque para 0rem se quiser colar 100% no teto */
+        padding-top: 2.5rem !important; /* <-- Aumentei para 2.5rem para a barra azul não ser cortada */
         padding-bottom: 1rem !important;
     }
     
@@ -34,7 +35,7 @@ st.markdown("""
         background: #161b22; border: 1px solid #30363d;
         border-radius: 12px; padding: 15px; text-align: center;
         border-bottom: 4px solid #00d2ff;
-        margin-top: -105px; /* Seu ajuste que ficou perfeito! */
+        margin-top: -105px; 
     }
     .label-kpi { color: #8b949e; font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
     .value-kpi { color: #f0f6fc; font-size: 26px !important; font-weight: 900 !important; margin: 5px 0; letter-spacing: -1px; }
