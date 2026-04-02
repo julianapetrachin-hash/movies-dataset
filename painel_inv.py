@@ -27,7 +27,7 @@ st.markdown("""
         background: #161b22; border: 1px solid #30363d;
         border-radius: 12px; padding: 15px; text-align: center;
         border-bottom: 4px solid #00d2ff;
-        margin-top: -65 git add . && git commit -m "Ajuste no layout dos cards e tabela" && git pushpx; /* <-- AUMENTEI AQUI: Puxa os cards mais pra cima para colar no título! */
+        margin-top: -25px; /* <-- AUMENTEI AQUI: Puxa os cards mais pra cima para colar no título! */
     }
     .label-kpi { color: #8b949e; font-size: 11px; font-weight: 600; text-transform: uppercase; margin-bottom: 5px; }
     .value-kpi { color: #f0f6fc; font-size: 26px !important; font-weight: 900 !important; margin: 5px 0; letter-spacing: -1px; }
