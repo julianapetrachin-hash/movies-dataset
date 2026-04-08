@@ -7,7 +7,7 @@ import datetime
 
 # --- Configuração da Planilha Google ---
 # SUBSTITUA PELO ID DA SUA PLANILHA NO GOOGLE SHEETS
-SHEET_ID = "SEU_ID_DA_PLANILHA_AQUI" 
+SHEET_ID = "1zc_0mrYa9Unw64cVXouMkdbRCswoItlqbtaG4Cw-dyA" 
 URL_GOOGLE_SHEETS = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=xlsx"
 
 # -----------------------------------------------------------------------------
