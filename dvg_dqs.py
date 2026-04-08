@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import io 
 import datetime
 
 # --- Configuração da Planilha Google ---
@@ -91,15 +90,6 @@ def analisar_e_limpar_dados(df_entrada):
     cols_to_keep = [col for col in cols_to_show if col in df_diferenca.columns]
     
     return df.copy(), df_diferenca[cols_to_keep]
-
-# -----------------------------------------------------------------------------
-# Função Auxiliar para Download do Excel
-# -----------------------------------------------------------------------------
-def to_excel(df):
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name='Relatorio_Divergencia')
-    return output.getvalue()
 
 # -----------------------------------------------------------------------------
 # Função para Carregar Dados do Google Sheets com "Agendamento"
@@ -204,7 +194,7 @@ try:
         if sentido_selecionado != 'Ambos':
             df_filtrado = df_filtrado[df_filtrado['STATUS_ANALISE'] == sentido_selecionado]
             
-    tab_dashboard, tab_detalhe_completo = st.tabs(["📊 Dashboard de Divergências", "📑 Detalhamento do Arquivo Consolidado"])
+    tab_dashboard, tab_detalhe_completo = st.tabs(["📊 Dashboard de Divergências", "📑 Detalhamento Consolidado"])
 
     with tab_dashboard:
         st.header("1. Visão Geral da Análise")
@@ -269,14 +259,6 @@ try:
             },
             height=300
         )
-        
-        st.download_button(
-            label="Baixar Relatório de Divergência (XLSX)",
-            data=to_excel(df_final),
-            file_name='relatorio_diferenca_estoque_google.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            key='download_relatorio_difergencia'
-        )
 
     with tab_detalhe_completo:
         st.header("📑 Detalhamento do Arquivo Consolidado (Todos os Registros)")
@@ -291,14 +273,6 @@ try:
                 'QT_PRODUTO_ERP': st.column_config.NumberColumn("QT ERP", format="%d"),
             },
             height=600
-        )
-        
-        st.download_button(
-            label="Baixar Arquivo Completo Processado (XLSX)",
-            data=to_excel(df_completo),
-            file_name='comparativo_estoque_completo_processado.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            key='download_completo'
         )
 
 except ValueError as e:
