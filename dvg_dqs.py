@@ -3,9 +3,12 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import io 
+import datetime
 
-# --- Configuração do Arquivo Local ---
-NOME_ARQUIVO_LOCAL = "Comp_ERP_WMS_21-08 A 14-12-25.xlsx" # Arquivo Excel
+# --- Configuração da Planilha Google ---
+# SUBSTITUA PELO ID DA SUA PLANILHA NO GOOGLE SHEETS
+SHEET_ID = "SEU_ID_DA_PLANILHA_AQUI" 
+URL_GOOGLE_SHEETS = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=xlsx"
 
 # -----------------------------------------------------------------------------
 # Função de Análise e Limpeza (Cálculo da Diferença e Constância)
@@ -119,26 +122,52 @@ def to_excel(df):
     return processed_data
 
 # -----------------------------------------------------------------------------
+# Função para Carregar Dados do Google Sheets com "Agendamento"
+# -----------------------------------------------------------------------------
+# Definimos a TTL (Time To Live) para um valor alto, e forçamos a invalidação usando um argumento.
+@st.cache_data(ttl=86400) # Mantém em cache por 24h, a menos que a janela_atualizacao mude
+def carregar_dados_google(url, janela_atualizacao):
+    """
+    Carrega os dados. O parâmetro 'janela_atualizacao' serve apenas para 
+    forçar o Streamlit a invalidar o cache quando seu valor mudar.
+    """
+    return pd.read_excel(url, sheet_name=None, engine='openpyxl')
+
+def determinar_janela_atualizacao():
+    """
+    Define qual a 'janela' de dados atual com base na hora.
+    - Antes das 10h: Usa os dados do final do dia anterior.
+    - Entre 10h e 14h59: Usa a janela 1 (10h).
+    - Após as 15h: Usa a janela 2 (15h).
+    """
+    agora = datetime.datetime.now()
+    if agora.hour < 10:
+        return f"{agora.date() - datetime.timedelta(days=1)}_pos_15h"
+    elif 10 <= agora.hour < 15:
+        return f"{agora.date()}_janela_10h"
+    else:
+        return f"{agora.date()}_janela_15h"
+
+# -----------------------------------------------------------------------------
 # Configuração do Streamlit Dashboard
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Dashboard de Diferença de Estoque WMS vs ERP - Leitura Local (XLSX)",
+    page_title="Dashboard Diferença Estoque - Google Sheets",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 st.title("📊 Análise de Divergência de Estoque (WMS vs ERP)")
-st.caption(f"Dados carregados diretamente do disco: **{NOME_ARQUIVO_LOCAL}**")
+st.caption(f"Conectado à nuvem: **Google Sheets (Atualizações às 10h e 15h)**")
 
 # --- BLOCO DE CARREGAMENTO, SELEÇÃO DE ABA E ANÁLISE ---
 try:
-    # 1. Tenta carregar TODAS as abas (sheet_name=None) para um dicionário.
-    # Isso é mais robusto contra abas ocultas.
-    data_dict = pd.read_excel(
-        NOME_ARQUIVO_LOCAL, 
-        sheet_name=None, 
-        engine='openpyxl'
-    )
+    with st.spinner("Conectando ao Google Sheets e baixando dados..."):
+        # Determina a chave de cache baseada na hora
+        chave_cache = determinar_janela_atualizacao()
+        
+        # 1. Carrega os dados da nuvem
+        data_dict = carregar_dados_google(URL_GOOGLE_SHEETS, chave_cache)
     
     sheet_names = list(data_dict.keys())
     
@@ -147,7 +176,7 @@ try:
     
     # 2. SELEÇÃO DE MÚLTIPLAS ABAS NA SIDEBAR
     with st.sidebar:
-        st.header("⚙️ Configuração do Arquivo Excel")
+        st.header("⚙️ Configuração da Planilha")
         
         # Multiselect permite a consolidação de dados de várias abas
         abas_selecionadas = st.multiselect(
@@ -156,6 +185,7 @@ try:
             default=sheet_names # Seleciona TODAS as abas por padrão (para consolidar)
         )
         st.markdown("---")
+        st.caption(f"Última verificação de janela de cache: {chave_cache}")
         
     # --- Verificação de seleção ---
     if not abas_selecionadas:
@@ -366,7 +396,7 @@ try:
         st.download_button(
             label="Baixar Relatório de Divergência (XLSX)",
             data=to_excel(df_final),
-            file_name='relatorio_diferenca_estoque_local.xlsx',
+            file_name='relatorio_diferenca_estoque_google.xlsx',
             mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             key='download_relatorio_difergencia'
         )
@@ -398,21 +428,13 @@ try:
             key='download_completo'
         )
 
-
-except FileNotFoundError:
-    st.error(f"Erro: O arquivo Excel '{NOME_ARQUIVO_LOCAL}' não foi encontrado.")
-    st.info("Por favor, certifique-se de que o arquivo XLSX esteja no mesmo diretório do script e que a biblioteca 'openpyxl' esteja instalada (`pip install openpyxl`).")
-    st.stop()
 except ValueError as e:
-    # Captura erros de estrutura/cabeçalho
-    st.error(f"Ocorreu um erro ao processar as abas selecionadas: '{aba_selecionada_display}'.")
-    st.info(f"Detalhes do Erro: {e}. Verifique se a estrutura de colunas (principalmente 'CD_PRODUTO', 'QT_PRODUTO_WMS', 'QT_PRODUTO_ERP', 'DATA_REGISTRO') é idêntica em todas as abas selecionadas.")
+    # Captura erros de estrutura/cabeçalho ou problemas de URL
+    st.error(f"Erro ao processar a planilha. Verifique se o ID está correto ou se a planilha está publicada na Web.")
+    st.info(f"Detalhes: {e}")
     st.stop()
 except ImportError:
     st.error("Erro: A biblioteca 'openpyxl' não está instalada.")
-    st.info("Para ler e escrever arquivos Excel, você precisa instalar o pacote: `pip install openpyxl`.")
     st.stop()
 except Exception as e:
-    # Erro de exceção geral, incluindo o erro de "sheet must be visible" se ocorrer na leitura
-    st.error(f"Ocorreu um erro geral ao processar o arquivo. Detalhes: {e}")
-
+    st.error(f"Ocorreu um erro geral. Detalhes: {e}")
