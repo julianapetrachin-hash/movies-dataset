@@ -9,7 +9,7 @@ SHEET_ID = "1zc_0mrYa9Unw64cVXouMkdbRCswoItlqbtaG4Cw-dyA"
 URL_GOOGLE_SHEETS = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=xlsx"
 
 # -----------------------------------------------------------------------------
-# Função de Análise e Limpeza (Cálculo da Diferença e Constância)
+# Função de Análise e Limpeza 
 # -----------------------------------------------------------------------------
 @st.cache_data
 def analisar_e_limpar_dados(df_entrada):
@@ -92,7 +92,7 @@ def analisar_e_limpar_dados(df_entrada):
     return df.copy(), df_diferenca[cols_to_keep]
 
 # -----------------------------------------------------------------------------
-# Função para Carregar Dados do Google Sheets com "Agendamento"
+# Carregamento do Google Sheets
 # -----------------------------------------------------------------------------
 @st.cache_data(ttl=86400) 
 def carregar_dados_google(url, janela_atualizacao):
@@ -108,19 +108,24 @@ def determinar_janela_atualizacao():
         return f"{agora.date()}_janela_15h"
 
 # -----------------------------------------------------------------------------
-# Configuração do Streamlit Dashboard
+# Configuração Visual e UI do Dashboard
 # -----------------------------------------------------------------------------
-st.set_page_config(
-    page_title="Dashboard Diferença Estoque - Google Sheets",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="Dashboard Diferença Estoque", layout="wide", initial_sidebar_state="collapsed")
 
-st.title("📊 Análise de Divergência de Estoque (WMS vs ERP)")
-st.caption(f"Conectado à nuvem: **Google Sheets (Atualizações às 10h e 15h)**")
+# Estilo Customizado (CSS) para os Cards
+st.markdown("""
+    <style>
+        .kpi-card { background-color: #1E2130; padding: 20px; border-radius: 12px; border-left: 5px solid #00FFC4; box-shadow: 2px 2px 10px rgba(0,0,0,0.2); }
+        .kpi-title { font-size: 14px; color: #8892B0; margin-bottom: 5px; text-transform: uppercase; font-weight: bold;}
+        .kpi-value { font-size: 32px; font-weight: 800; color: #00FFC4; margin: 0;}
+        .block-container { padding-top: 2rem; padding-bottom: 0rem; }
+    </style>
+""", unsafe_allow_html=True)
+
+st.markdown("### 📊 Centro de Comando: Divergência de Estoque (WMS vs ERP)")
 
 try:
-    with st.spinner("Conectando ao Google Sheets e baixando dados..."):
+    with st.spinner("Sincronizando com o Google Sheets..."):
         chave_cache = determinar_janela_atualizacao()
         data_dict = carregar_dados_google(URL_GOOGLE_SHEETS, chave_cache)
     
@@ -128,23 +133,16 @@ try:
     aba_selecionada_display = ", ".join(sheet_names)
     
     with st.sidebar:
-        st.header("⚙️ Configuração da Planilha")
-        abas_selecionadas = st.multiselect(
-            "Selecione as Abas (Sheets) para Análise:", 
-            sheet_names,
-            default=sheet_names 
-        )
-        st.markdown("---")
+        st.header("⚙️ Configurações")
+        abas_selecionadas = st.multiselect("Abas (Sheets):", sheet_names, default=sheet_names )
         st.caption(f"Última verificação de janela de cache: {chave_cache}")
         
     if not abas_selecionadas:
-        st.warning("Por favor, selecione pelo menos uma aba (sheet) na barra lateral para iniciar a análise.")
+        st.warning("Selecione pelo menos uma aba na barra lateral.")
         st.stop()
         
     list_dfs = [data_dict[sheet_name] for sheet_name in abas_selecionadas]
     df_bruto = pd.concat(list_dfs, ignore_index=True)
-    aba_selecionada_display = ", ".join(abas_selecionadas)
-    
     df_completo, df_diferenca = analisar_e_limpar_dados(df_bruto)
     
     total_registros = len(df_completo)
@@ -153,19 +151,7 @@ try:
     total_dias_analisados = df_completo[col_data_final].nunique() if col_data_final in df_completo.columns else 1
 
     with st.sidebar:
-        if col_data_final in df_completo.columns:
-            datas_unicas_lidas = df_completo[col_data_final].dropna().unique()
-            datas_formatadas = [pd.to_datetime(d).strftime('%d/%m/%Y') for d in datas_unicas_lidas]
-            
-            st.subheader("🔎 Debug de Datas (Constância)")
-            st.info(
-                f"Abas Lidas: **{aba_selecionada_display}**\n\n"
-                f"Dias Únicos Encontrados: **{total_dias_analisados}**\n\n"
-                f"Datas Lidas: **{', '.join(datas_formatadas)}**"
-            )
-            st.markdown("---") 
-
-    with st.sidebar:
+        st.markdown("---")
         st.header("Filtros Globais")
         empresas_unicas = ['Todas'] + sorted(list(df_diferenca['CD_EMPRESA'].unique()))
         empresa_selecionada = st.selectbox("Filtrar por Empresa", empresas_unicas)
@@ -176,112 +162,80 @@ try:
         df_filtrado_base = df_diferenca.copy()
         
         if 'STATUS_CONSTANCIA' in df_diferenca.columns and total_dias_analisados > 1:
-            st.subheader("Filtro de Constância")
             status_constancia_unicos = ['Todos'] + list(df_diferenca['STATUS_CONSTANCIA'].unique())
             if 'N/A - Única Data' in status_constancia_unicos:
                 status_constancia_unicos.remove('N/A - Única Data')
-                
-            constancia_selecionada = st.multiselect("Filtrar por Status de Constância", status_constancia_unicos, default='Todos', key='multiselect_constancia')
+            constancia_selecionada = st.multiselect("Status de Constância", status_constancia_unicos, default='Todos')
             
             if 'Todos' not in constancia_selecionada:
                 df_filtrado_base = df_filtrado_base[df_filtrado_base['STATUS_CONSTANCIA'].isin(constancia_selecionada)]
                 
-        st.markdown("---")
-        
         df_filtrado = df_filtrado_base.copy()
         if empresa_selecionada != 'Todas':
             df_filtrado = df_filtrado[df_filtrado['CD_EMPRESA'] == empresa_selecionada]
         if sentido_selecionado != 'Ambos':
             df_filtrado = df_filtrado[df_filtrado['STATUS_ANALISE'] == sentido_selecionado]
             
-    tab_dashboard, tab_detalhe_completo = st.tabs(["📊 Dashboard de Divergências", "📑 Detalhamento Consolidado"])
+    tab_dashboard, tab_detalhe_completo = st.tabs(["🚀 DASHBOARD", "📑 DADOS CONSOLIDADOS"])
 
     with tab_dashboard:
-        st.header("1. Visão Geral da Análise")
+        # --- LINHA 1: KPIs ---
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Total de Registros Analisados", f"{total_registros:,.0f}".replace(",", "."))
-        col2.metric("Total de Itens com Divergência", f"{total_diferencas:,.0f}".replace(",", "."))
-        col3.metric("Dias Únicos Analisados", f"{total_dias_analisados:,.0f}".replace(",", "."))
         percentual_diferenca = (total_diferencas / total_registros) * 100 if total_registros > 0 else 0
-        col4.metric("Percentual de Divergência", f"{percentual_diferenca:.2f}%")
-        st.markdown("---")
-
-        st.header("2. Divergência por Empresa/Área")
-        df_empresa_sum = df_diferenca.groupby('CD_EMPRESA')['DIFERENCA_ATUAL'].agg(['count', 'sum']).reset_index()
-        df_empresa_sum.rename(columns={'count': 'Total de Itens com Diferença', 'sum': 'Diferença Total (Soma)'}, inplace=True)
         
-        col_grafico, col_tabela_top = st.columns([2, 1])
-        with col_grafico:
-            st.subheader("Top 10 Empresas por Número de Divergências")
-            df_top_10 = df_empresa_sum.nlargest(10, 'Total de Itens com Diferença')
-            fig_bar = px.bar(df_top_10, x='CD_EMPRESA', y='Total de Itens com Diferença', title='Itens Divergentes (Top 10)', color='Total de Itens com Diferença', template='seaborn')
+        with col1:
+            st.markdown(f'<div class="kpi-card"><p class="kpi-title">Registros Analisados</p><p class="kpi-value">{total_registros:,.0f}</p></div>'.replace(",", "."), unsafe_allow_html=True)
+        with col2:
+            st.markdown(f'<div class="kpi-card" style="border-left-color: #FF5252;"><p class="kpi-title">Itens Divergentes</p><p class="kpi-value" style="color: #FF5252;">{total_diferencas:,.0f}</p></div>'.replace(",", "."), unsafe_allow_html=True)
+        with col3:
+            st.markdown(f'<div class="kpi-card" style="border-left-color: #FFD700;"><p class="kpi-title">% Divergência</p><p class="kpi-value" style="color: #FFD700;">{percentual_diferenca:.1f}%</p></div>', unsafe_allow_html=True)
+        with col4:
+            st.markdown(f'<div class="kpi-card" style="border-left-color: #A6ACCD;"><p class="kpi-title">Dias Analisados</p><p class="kpi-value" style="color: #A6ACCD;">{total_dias_analisados:,.0f}</p></div>'.replace(",", "."), unsafe_allow_html=True)
+            
+        st.write("") # Espaço
+
+        # --- LINHA 2: GRÁFICOS PRINCIPAIS ---
+        col_graf_bar, col_graf_pie = st.columns([1.5, 1])
+        
+        with col_graf_bar:
+            df_empresa_sum = df_filtrado.groupby('CD_EMPRESA')['DIFERENCA_ATUAL'].agg('count').reset_index(name='Total_Divergencias')
+            df_top_10 = df_empresa_sum.nlargest(10, 'Total_Divergencias').sort_values(by='Total_Divergencias', ascending=True) # Ordena para o Plotly
+            df_top_10['CD_EMPRESA'] = "Filial " + df_top_10['CD_EMPRESA'].astype(str) # Força ser texto
+            
+            fig_bar = px.bar(
+                df_top_10, x='Total_Divergencias', y='CD_EMPRESA', orientation='h',
+                title='🔥 Top 10 Filiais Críticas (Qtd. de Diferenças)', text='Total_Divergencias',
+                color='Total_Divergencias', color_continuous_scale='Reds'
+            )
+            fig_bar.update_traces(textposition='outside')
+            fig_bar.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font_color="#8892B0", coloraxis_showscale=False, xaxis_title="", yaxis_title="")
             st.plotly_chart(fig_bar, use_container_width=True)
 
-        with col_tabela_top:
-            st.subheader("Distribuição por Área ERP (Filtros Aplicados)")
-            df_area_sum = df_filtrado.groupby('DS_AREA_ERP')['DIFERENCA_ATUAL'].agg('count').reset_index()
-            df_area_sum.rename(columns={'DIFERENCA_ATUAL': 'Total de Divergências'}, inplace=True)
-            fig_pie = px.pie(df_area_sum, values='Total de Divergências', names='DS_AREA_ERP', title='Distribuição por Área ERP')
+        with col_graf_pie:
+            df_area_sum = df_filtrado.groupby('DS_AREA_ERP')['DIFERENCA_ATUAL'].agg('count').reset_index(name='Total_Divergencias')
+            fig_pie = px.pie(
+                df_area_sum, values='Total_Divergencias', names='DS_AREA_ERP', 
+                title='🎯 Distribuição por Área ERP', hole=0.5, color_discrete_sequence=px.colors.sequential.Teal
+            )
+            fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+            fig_pie.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font_color="#8892B0", showlegend=False)
             st.plotly_chart(fig_pie, use_container_width=True)
-        st.markdown("---")
-        
-        st.header("3. Análise de Constância dos Itens Divergentes")
-        if 'STATUS_CONSTANCIA' in df_diferenca.columns and total_dias_analisados > 1:
-            col_const_graf, col_const_tabela = st.columns([1, 1])
-            with col_const_graf:
-                df_constancia_count = df_diferenca.drop_duplicates(subset=['CD_PRODUTO']).groupby('STATUS_CONSTANCIA')['CD_PRODUTO'].count().reset_index(name='Total de Produtos')
-                fig_constancia = px.pie(df_constancia_count, values='Total de Produtos', names='STATUS_CONSTANCIA', title='Distribuição dos Itens Divergentes por Constância')
-                st.plotly_chart(fig_constancia, use_container_width=True)
 
-            with col_const_tabela:
-                st.subheader("Top 10 Itens Mais Recorrentes (Todas as Empresas)")
-                df_top_recorrentes = df_diferenca.sort_values(by=['DIAS_COM_DIVERGENCIA', 'DIFERENCA_ATUAL'], ascending=[False, False]).drop_duplicates(subset=['CD_PRODUTO']).nlargest(10, 'DIAS_COM_DIVERGENCIA')
-                st.dataframe(df_top_recorrentes[['CD_PRODUTO', 'DS_PRODUTO', 'DIAS_COM_DIVERGENCIA', 'STATUS_CONSTANCIA', 'DIFERENCA_ATUAL', 'CD_EMPRESA']], use_container_width=True)
-        else:
-            st.info(f"Análise de Constância não aplicável. Foi encontrada apenas **{total_dias_analisados}** data única.")
-        st.markdown("---")
-        
-        st.header(f"4. Detalhamento dos Itens (Exibidos: {len(df_filtrado):,.0f})")
-        max_diff = df_filtrado['DIFERENCA_ATUAL'].abs().max() if not df_filtrado.empty else 0
-        min_diff_abs = st.slider("Filtrar Diferença Mínima (Valor Absoluto)", min_value=0, max_value=int(max_diff) if max_diff > 0 else 1, value=0, step=1, key='slider_min_diff')
-
-        df_final = df_filtrado[df_filtrado['DIFERENCA_ATUAL'].abs() >= min_diff_abs]
-        st.info(f"Exibindo **{len(df_final):,.0f}** de **{len(df_filtrado):,.0f}** itens filtrados na tabela abaixo, com Diferença Absoluta >= **{min_diff_abs}**.")
-        
+        # --- LINHA 3: DETALHES ---
+        st.markdown("### 🔎 Detalhamento dos Itens")
+        df_final = df_filtrado.sort_values(by='DIFERENCA_ATUAL', ascending=False)
         st.dataframe(
-            df_final, 
-            use_container_width=True,
+            df_final, use_container_width=True, height=350,
             column_config={
-                'DIFERENCA_ATUAL': st.column_config.NumberColumn("Diferença (WMS - ERP)", format="%d"),
+                'DIFERENCA_ATUAL': st.column_config.NumberColumn("Diferença", format="%d"),
                 'QT_PRODUTO_WMS': st.column_config.NumberColumn("QT WMS", format="%d"),
                 'QT_PRODUTO_ERP': st.column_config.NumberColumn("QT ERP", format="%d"),
-                'DIAS_COM_DIVERGENCIA': st.column_config.NumberColumn("Dias Divergindo", format="%d"),
-            },
-            height=300
+            }
         )
 
     with tab_detalhe_completo:
-        st.header("📑 Detalhamento do Arquivo Consolidado (Todos os Registros)")
-        st.info(f"Esta aba exibe os **{total_registros:,.0f}** registros originais da nuvem.")
-        
-        st.dataframe(
-            df_completo, 
-            use_container_width=True,
-            column_config={
-                'DIFERENCA_ATUAL': st.column_config.NumberColumn("Diferença (WMS - ERP)", format="%d"),
-                'QT_PRODUTO_WMS': st.column_config.NumberColumn("QT WMS", format="%d"),
-                'QT_PRODUTO_ERP': st.column_config.NumberColumn("QT ERP", format="%d"),
-            },
-            height=600
-        )
+        st.info("Visualização da base bruta importada do Google Sheets.")
+        st.dataframe(df_completo, use_container_width=True, height=600)
 
-except ValueError as e:
-    st.error(f"Erro ao processar a planilha. Verifique se o ID está correto ou se a planilha está publicada na Web.")
-    st.info(f"Detalhes: {e}")
-    st.stop()
-except ImportError:
-    st.error("⚠️ ATENÇÃO: A biblioteca 'openpyxl' não está instalada no servidor do Streamlit.")
-    st.info("Para corrigir isso, garanta que o arquivo 'requirements.txt' no GitHub contenha a linha: openpyxl==3.1.2")
-    st.stop()
 except Exception as e:
-    st.error(f"Ocorreu um erro geral ao acessar o Google Sheets. Detalhes: {e}")
+    st.error(f"Erro na conexão com os dados. Detalhes: {e}")
