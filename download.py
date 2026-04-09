@@ -33,17 +33,24 @@ SHEET_ID = "11-IwzWjgFVKynzDTkqpr4_Fbs4GclKhS7W0KTKms0q4"
 
 @st.cache_data(ttl=600)
 def carregar_dados():
+    # Adicionamos o parâmetro decimal para o Pandas entender a vírgula do Sheets
     url_resultados = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=BigQuery+Results"
     url_historico = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Historico"
+    
     try:
-        df_res = pd.read_csv(url_resultados)
+        # Lemos o CSV tratando vírgula como decimal (padrão Brasil do seu Sheets)
+        df_res = pd.read_csv(url_resultados, decimal=',')
         df_hist = pd.read_csv(url_historico)
         
-        # Tratamento numérico para o Dashboard
-        if 'VALOR_TOTAL_ESTOQUE_ATUALIZADO' in df_res.columns:
-            df_res['VALOR_TOTAL_ESTOQUE_ATUALIZADO'] = pd.to_numeric(df_res['VALOR_TOTAL_ESTOQUE_ATUALIZADO'].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
-        if 'QT_ESTOQUE' in df_res.columns:
-            df_res['QT_ESTOQUE'] = pd.to_numeric(df_res['QT_ESTOQUE'], errors='coerce').fillna(0)
+        # Tratamento de segurança para garantir que tudo seja FLOAT
+        cols_financeiras = ['VALOR_TOTAL_ESTOQUE_ATUALIZADO', 'QT_ESTOQUE', 'CUSTO_MEDIO', 'CUSTO_PGTO']
+        
+        for col in cols_financeiras:
+            if col in df_res.columns:
+                # Se ainda houver sujeira de string, limpamos antes de converter
+                if df_res[col].dtype == 'object':
+                    df_res[col] = df_res[col].astype(str).str.replace('.', '', regex=False).str.replace(',', '.', regex=False)
+                df_res[col] = pd.to_numeric(df_res[col], errors='coerce').fillna(0)
             
         return df_res, df_hist
     except Exception as e:
