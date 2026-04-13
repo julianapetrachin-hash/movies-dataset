@@ -4,12 +4,20 @@ import numpy as np
 import plotly.express as px
 import datetime
 
-# --- Configuração da Planilha Google ---
+# --- Configuração da Planilha Google (Divergências) ---
 SHEET_ID = "1zc_0mrYa9Unw64cVXouMkdbRCswoItlqbtaG4Cw-dyA" 
 URL_GOOGLE_SHEETS = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=xlsx"
 
+# --- Configuração da Planilha Google (Resumo - Acuracidade) ---
+# Link fornecido pelo usuário: https://docs.google.com/spreadsheets/d/1GjfNcXngLsT0FKIEBrp4VPRZDmfN_DmuwMzpVa-5D6c/edit#gid=3940308
+SHEET_ID_RESUMO = "1GjfNcXngLsT0FKIEBrp4VPRZDmfN_DmuwMzpVa-5D6c"
+# Para ler uma aba específica via exportação direta, usamos a estratégia do pandas com 'sheet_name' no read_excel ou read_csv.
+# Como o link termina em XLSX, vamos assumir que o formato XLSX funciona melhor para manter tipos de dados.
+URL_GOOGLE_RESUMO = f"https://docs.google.com/spreadsheets/d/{SHEET_ID_RESUMO}/export?format=xlsx"
+
+
 # -----------------------------------------------------------------------------
-# Função de Análise e Limpeza 
+# Função de Análise e Limpeza (Divergências)
 # -----------------------------------------------------------------------------
 @st.cache_data
 def analisar_e_limpar_dados(df_entrada):
@@ -93,7 +101,36 @@ def analisar_e_limpar_dados(df_entrada):
     return df.copy(), df_diferenca[cols_to_keep]
 
 # -----------------------------------------------------------------------------
-# Carregamento do Google Sheets
+# Função para Carregar Dados da Aba Resumo (Acuracidade)
+# -----------------------------------------------------------------------------
+@st.cache_data(ttl=86400) # Mantém cache por 24 horas
+def carregar_dados_resumo(url):
+    try:
+        # Lê especificamente a aba 'Resumo'
+        df_resumo = pd.read_excel(url, sheet_name='Resumo', engine='openpyxl')
+        
+        # Limpeza básica das colunas solicitadas
+        if 'DATA' in df_resumo.columns:
+            df_resumo['DATA'] = pd.to_datetime(df_resumo['DATA'], errors='coerce').dt.normalize()
+            df_resumo.dropna(subset=['DATA'], inplace=True)
+            
+        if 'ACURACIDADE' in df_resumo.columns:
+            # Garante que seja numérico e remove possíveis símbolos de % se vier como texto
+            if df_resumo['ACURACIDADE'].dtype == 'object':
+                 df_resumo['ACURACIDADE'] = df_resumo['ACURACIDADE'].astype(str).str.replace('%', '', regex=False).str.replace(',', '.', regex=False)
+            df_resumo['ACURACIDADE'] = pd.to_numeric(df_resumo['ACURACIDADE'], errors='coerce').fillna(0)
+
+        if 'CD' in df_resumo.columns:
+             # Limpeza do .0 clássica
+             df_resumo['CD'] = df_resumo['CD'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
+
+        return df_resumo
+    except Exception as e:
+        st.error(f"Erro ao carregar aba 'Resumo': {e}")
+        return pd.DataFrame() # Retorna dataframe vazio em caso de erro
+
+# -----------------------------------------------------------------------------
+# Carregamento do Google Sheets (Divergências)
 # -----------------------------------------------------------------------------
 @st.cache_data(ttl=86400) 
 def carregar_dados_google(url, janela_atualizacao):
@@ -129,6 +166,9 @@ try:
     with st.spinner("Sincronizando com o Google Sheets..."):
         chave_cache = determinar_janela_atualizacao()
         data_dict = carregar_dados_google(URL_GOOGLE_SHEETS, chave_cache)
+        
+        # Carrega os dados da aba Resumo separadamente
+        df_resumo_acuracidade = carregar_dados_resumo(URL_GOOGLE_RESUMO)
     
     sheet_names = list(data_dict.keys())
     aba_selecionada_display = ", ".join(sheet_names)
@@ -213,6 +253,48 @@ try:
             fig_bar.update_traces(textposition='outside')
             fig_bar.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font_color="#8892B0", coloraxis_showscale=False, xaxis_title="", yaxis_title="")
             st.plotly_chart(fig_bar, use_container_width=True)
+
+            # --- NOVO GRAFICO: ACURACIDADE (Logo abaixo do Top 10) ---
+            st.markdown("---") # Linha separadora opcional
+            
+            if not df_resumo_acuracidade.empty:
+                # Ordena por data para garantir o fluxo da linha
+                df_resumo_plot = df_resumo_acuracidade.sort_values(by='DATA')
+                
+                # Formata o CD para o eixo
+                df_resumo_plot['CD'] = "CD " + df_resumo_plot['CD'].astype(str)
+
+                fig_line_acuracidade = px.line(
+                    df_resumo_plot, 
+                    x='DATA', 
+                    y='ACURACIDADE', 
+                    color='CD',
+                    title='📈 Evolução Histórica da Acuracidade por CD',
+                    markers=True, # Adiciona pontos na linha
+                    color_discrete_sequence=px.colors.qualitative.Safe # Paleta de cores visível
+                )
+                
+                # Ajustes de Layout e Formatação para Porcentagem
+                fig_line_acuracidade.update_layout(
+                    plot_bgcolor="rgba(0,0,0,0)", 
+                    paper_bgcolor="rgba(0,0,0,0)", 
+                    font_color="#8892B0",
+                    xaxis_title="Data do Registro",
+                    yaxis_title="Acuracidade (%)",
+                    legend_title="Centro de Dist.",
+                    hovermode="x unified" # Mostra todos os CDs ao passar o mouse na data
+                )
+                
+                # Formata o eixo Y para mostrar porcentagem (assumindo que 95.5 significa 95.5%)
+                fig_line_acuracidade.update_yaxes(ticksuffix="%")
+                
+                # Se os dados na planilha já estiverem em decimal (ex: 0.955), use a linha abaixo ao invés da anterior:
+                # fig_line_acuracidade.update_yaxes(tickformat=".1%")
+
+                st.plotly_chart(fig_line_acuracidade, use_container_width=True)
+            else:
+                st.warning("Não foi possível carregar os dados de Acuracidade da aba 'Resumo'. Verifique se as colunas 'DATA', 'CD' e 'ACURACIDADE' existem.")
+
 
         with col_graf_pie:
             df_area_sum = df_filtrado.groupby('DS_AREA_ERP')['DIFERENCA_ATUAL'].agg('count').reset_index(name='Total_Divergencias')
