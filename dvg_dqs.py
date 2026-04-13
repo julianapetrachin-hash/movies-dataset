@@ -18,40 +18,37 @@ URL_RESUMO = f"https://docs.google.com/spreadsheets/d/{SHEET_ID_RESUMO}/export?f
 @st.cache_data(ttl=3600)
 def carregar_dados_resumo(url):
     try:
-        # Lê especificamente a aba RESUMO
         df = pd.read_excel(url, sheet_name='RESUMO', engine='openpyxl')
-        
-        # Normaliza nomes das colunas: remove espaços e coloca em MAIÚSCULO
         df.columns = df.columns.str.strip().str.upper()
         
-        # Mapeia possíveis variações de nomes
-        mapeamento = {'DATA': 'DATA', 'CD': 'CD', 'ACURACIDADE': 'ACURACIDADE', 'ACURICIDADE': 'ACURACIDADE'}
+        # Mapeamento para a nova coluna solicitada: TOTAL DIF. PÇ
+        # Adicionei variações caso haja erro de digitação na planilha
+        mapeamento = {
+            'DATA': 'DATA', 
+            'CD': 'CD', 
+            'TOTAL DIF. PÇ': 'DIF_PECAS',
+            'TOTA DIF. PÇ': 'DIF_PECAS',
+            'TOTAL DIF PÇ': 'DIF_PECAS'
+        }
         df = df.rename(columns=mapeamento)
 
-        # Validação de colunas
-        cols_necessarias = ['DATA', 'CD', 'ACURACIDADE']
-        if not all(c in df.columns for c in cols_necessarias):
-            st.error(f"Colunas não encontradas em 'RESUMO'. Encontradas: {list(df.columns)}")
+        if not all(c in df.columns for c in ['DATA', 'CD', 'DIF_PECAS']):
+            st.error(f"Colunas necessárias não encontradas. Colunas na aba: {list(df.columns)}")
             return pd.DataFrame()
 
-        # Tratamento de tipos
         df['DATA'] = pd.to_datetime(df['DATA'], errors='coerce').dt.normalize()
         df['CD'] = df['CD'].astype(str).str.replace(r'\.0$', '', regex=True).str.strip()
         
-        # Converte Acuracidade para numérico (trata string "95%" ou "95,5")
-        if df['ACURACIDADE'].dtype == 'object':
-            df['ACURACIDADE'] = df['ACURACIDADE'].astype(str).str.replace('%', '').str.replace(',', '.')
+        # Converte Diferença de Peças para numérico
+        df['DIF_PECAS'] = pd.to_numeric(df['DIF_PECAS'], errors='coerce').fillna(0)
         
-        df['ACURACIDADE'] = pd.to_numeric(df['ACURACIDADE'], errors='coerce')
-        
-        return df.dropna(subset=['DATA', 'ACURACIDADE']).sort_values('DATA')
+        return df.dropna(subset=['DATA']).sort_values('DATA')
     except Exception as e:
-        st.error(f"Erro ao acessar aba RESUMO: {e}. Verifique se a planilha está como 'Qualquer pessoa com o link'.")
+        st.error(f"Erro ao acessar aba RESUMO: {e}")
         return pd.DataFrame()
 
 @st.cache_data
 def analisar_e_limpar_dados(df_entrada):
-    # (Mantendo sua lógica original de limpeza de divergências)
     col_chave, col_wms, col_erp, col_data = 'CD_PRODUTO', 'QT_PRODUTO_WMS', 'QT_PRODUTO_ERP', 'DATA_REGISTRO'
     df = df_entrada.copy()
     df.columns = df.columns.str.strip() 
@@ -63,10 +60,9 @@ def analisar_e_limpar_dados(df_entrada):
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
     if col_data in df.columns:
         df[col_data] = pd.to_datetime(df[col_data], dayfirst=True, errors='coerce').dt.normalize()
-        df.dropna(subset=[col_data], inplace=True)
+    
     df['DIFERENCA_ATUAL'] = df[col_wms] - df[col_erp] if col_wms in df.columns else 0
     df_diferenca = df[df['DIFERENCA_ATUAL'] != 0].copy()
-    df_diferenca['STATUS_ANALISE'] = df_diferenca['DIFERENCA_ATUAL'].apply(lambda x: 'WMS_MAIOR_QUE_ERP (+)' if x > 0 else 'ERP_MAIOR_QUE_WMS (-)')
     return df, df_diferenca
 
 @st.cache_data(ttl=3600)
@@ -74,68 +70,74 @@ def carregar_dados_google(url, janela):
     return pd.read_excel(url, sheet_name=None, engine='openpyxl')
 
 # -----------------------------------------------------------------------------
-# UI e Layout
+# Interface Principal (UI)
 # -----------------------------------------------------------------------------
-st.set_page_config(page_title="Dashboard Estoque", layout="wide")
+st.set_page_config(page_title="Dashboard Diferença Peças", layout="wide")
 
 st.markdown("""
     <style>
-        .kpi-card { background-color: #1E2130; padding: 20px; border-radius: 12px; border-left: 5px solid #00FFC4; }
-        .kpi-value { font-size: 32px; font-weight: 800; color: #00FFC4; }
+        .kpi-card { background-color: #1E2130; padding: 20px; border-radius: 12px; border-left: 5px solid #00FFC4; margin-bottom: 20px; }
+        .kpi-title { color: #8892B0; font-size: 14px; font-weight: bold; }
+        .kpi-value { font-size: 30px; font-weight: 800; color: #00FFC4; }
     </style>
 """, unsafe_allow_html=True)
 
 try:
-    with st.spinner("Carregando dados..."):
-        # Dados de Divergência
+    with st.spinner("Sincronizando dados..."):
         janela = datetime.datetime.now().strftime("%H")
         data_dict = carregar_dados_google(URL_DIVERGENCIA, janela)
         df_bruto = pd.concat(data_dict.values(), ignore_index=True)
         df_completo, df_diferenca = analisar_e_limpar_dados(df_bruto)
-        
-        # Dados de Acuracidade (ABA RESUMO)
         df_resumo = carregar_dados_resumo(URL_RESUMO)
 
-    # Tabs
-    tab_dash, tab_dados = st.tabs(["🚀 DASHBOARD", "📑 DADOS"])
+    st.markdown("### 📊 Monitoramento de Diferença de Peças por CD")
 
-    with tab_dash:
-        # KPIs (Simplificado)
-        c1, c2, c3 = st.columns(3)
-        c1.markdown(f'<div class="kpi-card">Registros<br><span class="kpi-value">{len(df_completo)}</span></div>', unsafe_allow_html=True)
-        c2.markdown(f'<div class="kpi-card" style="border-left-color: #FF5252;">Divergentes<br><span class="kpi-value" style="color: #FF5252;">{len(df_diferenca)}</span></div>', unsafe_allow_html=True)
-        c3.markdown(f'<div class="kpi-card" style="border-left-color: #FFD700;">Acuracidade Média<br><span class="kpi-value" style="color: #FFD700;">{df_resumo["ACURACIDADE"].mean():.1f}%</span></div>', unsafe_allow_html=True)
+    # --- LINHA 1: KPIs ---
+    c1, c2, c3 = st.columns(3)
+    c1.markdown(f'<div class="kpi-card"><p class="kpi-title">TOTAL REGISTROS</p><p class="kpi-value">{len(df_completo)}</p></div>', unsafe_allow_html=True)
+    c2.markdown(f'<div class="kpi-card" style="border-left-color: #FF5252;"><p class="kpi-title">ITENS COM DIVERGÊNCIA</p><p class="kpi-value" style="color: #FF5252;">{len(df_diferenca)}</p></div>', unsafe_allow_html=True)
+    
+    # Soma da Diferença Total de Peças da Aba Resumo
+    total_dif_pcs = df_resumo['DIF_PECAS'].sum() if not df_resumo.empty else 0
+    c3.markdown(f'<div class="kpi-card" style="border-left-color: #FFD700;"><p class="kpi-title">TOTAL DIF. PEÇAS (Geral)</p><p class="kpi-value" style="color: #FFD700;">{total_dif_pcs:,.0f}</p></div>'.replace(",", "."), unsafe_allow_html=True)
 
-        st.write("")
+    # --- LINHA 2: GRÁFICOS LADO A LADO ---
+    col_bar, col_pie = st.columns([1.5, 1])
 
-        col_esq, col_dir = st.columns([1.5, 1])
+    with col_bar:
+        df_top = df_diferenca.groupby('CD_EMPRESA').size().reset_index(name='Total').nlargest(10, 'Total')
+        df_top['CD_EMPRESA'] = "CD " + df_top['CD_EMPRESA'].astype(str)
+        fig_bar = px.bar(df_top, x='Total', y='CD_EMPRESA', orientation='h', 
+                         title='🔥 Top 10 CDs com Mais Ocorrências', 
+                         color='Total', color_continuous_scale='Reds')
+        fig_bar.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font_color="#8892B0")
+        st.plotly_chart(fig_bar, use_container_width=True)
 
-        with col_esq:
-            # Grafico Top 10
-            df_top = df_diferenca.groupby('CD_EMPRESA').size().reset_index(name='Total').nlargest(10, 'Total')
-            fig_bar = px.bar(df_top, x='Total', y='CD_EMPRESA', orientation='h', title='🔥 Top 10 CDs com Divergência', color='Total', color_continuous_scale='Reds')
-            st.plotly_chart(fig_bar, use_container_width=True)
+    with col_pie:
+        df_area = df_diferenca.groupby('DS_AREA_ERP').size().reset_index(name='Total')
+        fig_pie = px.pie(df_area, values='Total', names='DS_AREA_ERP', 
+                         title='🎯 Ocorrências por Área', hole=0.5,
+                         color_discrete_sequence=px.colors.sequential.Teal)
+        fig_pie.update_layout(plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)", font_color="#8892B0")
+        st.plotly_chart(fig_pie, use_container_width=True)
 
-            # --- O NOVO GRÁFICO DE LINHA ---
-            st.markdown("### 📈 Histórico de Acuracidade")
-            if not df_resumo.empty:
-                fig_line = px.line(df_resumo, x='DATA', y='ACURACIDADE', color='CD', markers=True,
-                                   title='Evolução da Acuracidade por CD (Aba RESUMO)')
-                fig_line.update_yaxes(ticksuffix="%")
-                st.plotly_chart(fig_line, use_container_width=True)
-            else:
-                st.info("Aguardando dados da aba RESUMO...")
-
-        with col_dir:
-            # Gráfico de Pizza
-            df_area = df_diferenca.groupby('DS_AREA_ERP').size().reset_index(name='Total')
-            fig_pie = px.pie(df_area, values='Total', names='DS_AREA_ERP', title='🎯 Distribuição por Área', hole=0.5)
-            st.plotly_chart(fig_pie, use_container_width=True)
-
-        # Tabela de Itens
-        st.markdown("### 🔎 Detalhes")
-        st.dataframe(df_diferenca.head(100), use_container_width=True)
+    # --- LINHA 3: GRÁFICO DE LINHA (LARGURA TOTAL) ---
+    st.markdown("### 📈 Evolução de Diferença de Peças (Total Dif. Pç)")
+    if not df_resumo.empty:
+        fig_line = px.line(df_resumo, x='DATA', y='DIF_PECAS', color='CD', markers=True,
+                           title='Evolução Histórica da Diferença de Peças por Unidade')
+        fig_line.update_layout(
+            plot_bgcolor="rgba(0,0,0,0)", 
+            paper_bgcolor="rgba(0,0,0,0)", 
+            font_color="#8892B0",
+            xaxis_title="Data",
+            yaxis_title="Qtd. Peças Diferença",
+            legend_title="CD",
+            hovermode="x unified"
+        )
+        st.plotly_chart(fig_line, use_container_width=True)
+    else:
+        st.info("Aguardando dados da aba RESUMO para exibir o gráfico de evolução.")
 
 except Exception as e:
-    st.error(f"Erro geral: {e}")
-    
+    st.error(f"Ocorreu um erro no Dashboard: {e}")
