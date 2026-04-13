@@ -94,3 +94,4 @@ if not df_diferenca.empty:
 else:
     st.warning("Verifique se a planilha está pública (Qualquer pessoa com o link).")
     
+
